@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  calbridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: calbridge
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - BASE_URL=${BASE_URL}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - OIDC_ISSUER=${OIDC_ISSUER}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
+      - OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - SESSION_SECRET=${SESSION_SECRET}
+      - DATABASE_PATH=/app/data/calbridge.db
+      - DEFAULT_DEST_URL=${DEFAULT_DEST_URL}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-10}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-20}
+      - MIN_SYNC_INTERVAL=${MIN_SYNC_INTERVAL:-30}
+      - MAX_SYNC_INTERVAL=${MAX_SYNC_INTERVAL:-3600}
+    volumes:
+      - calbridge-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - calbridge-network
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  calbridge-data:
+    driver: local
+
+networks:
+  calbridge-network:
+    driver: bridge
