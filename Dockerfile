@@ -33,6 +33,7 @@ WORKDIR /app
 
 # Copy binary from builder
 COPY --from=builder /app/calbridge /app/calbridge
+COPY --from=builder /app/ui /app/ui
 
 # Copy entrypoint script
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
