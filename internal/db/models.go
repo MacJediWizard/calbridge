@@ -1,0 +1,129 @@
+package db
+
+import (
+	"time"
+)
+
+// SyncStatus represents the status of a sync operation.
+type SyncStatus string
+
+const (
+	SyncStatusPending SyncStatus = "pending"
+	SyncStatusRunning SyncStatus = "running"
+	SyncStatusSuccess SyncStatus = "success"
+	SyncStatusError   SyncStatus = "error"
+)
+
+// ConflictStrategy represents how to handle sync conflicts.
+type ConflictStrategy string
+
+const (
+	ConflictSourceWins ConflictStrategy = "source_wins"
+	ConflictDestWins   ConflictStrategy = "dest_wins"
+	ConflictLatestWins ConflictStrategy = "latest_wins"
+)
+
+// SourceType represents the type of calendar source.
+type SourceType string
+
+const (
+	SourceTypeICloud    SourceType = "icloud"
+	SourceTypeGoogle    SourceType = "google"
+	SourceTypeFastmail  SourceType = "fastmail"
+	SourceTypeNextcloud SourceType = "nextcloud"
+	SourceTypeCustom    SourceType = "custom"
+)
+
+// SourcePreset contains preset configuration for known calendar providers.
+type SourcePreset struct {
+	Name        string
+	Type        SourceType
+	BaseURL     string
+	Description string
+}
+
+// SourcePresets maps source types to their preset configurations.
+var SourcePresets = map[SourceType]SourcePreset{
+	SourceTypeICloud: {
+		Name:        "iCloud",
+		Type:        SourceTypeICloud,
+		BaseURL:     "https://caldav.icloud.com/",
+		Description: "Apple iCloud Calendar",
+	},
+	SourceTypeGoogle: {
+		Name:        "Google Calendar",
+		Type:        SourceTypeGoogle,
+		BaseURL:     "https://apidata.googleusercontent.com/caldav/v2/",
+		Description: "Google Calendar (requires OAuth)",
+	},
+	SourceTypeFastmail: {
+		Name:        "Fastmail",
+		Type:        SourceTypeFastmail,
+		BaseURL:     "https://caldav.fastmail.com/dav/",
+		Description: "Fastmail Calendar",
+	},
+	SourceTypeNextcloud: {
+		Name:        "Nextcloud",
+		Type:        SourceTypeNextcloud,
+		BaseURL:     "",
+		Description: "Nextcloud Calendar (self-hosted)",
+	},
+	SourceTypeCustom: {
+		Name:        "Custom CalDAV",
+		Type:        SourceTypeCustom,
+		BaseURL:     "",
+		Description: "Custom CalDAV server",
+	},
+}
+
+// User represents a user in the system.
+type User struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Source represents a calendar source configuration.
+type Source struct {
+	ID               string           `json:"id"`
+	UserID           string           `json:"user_id"`
+	Name             string           `json:"name"`
+	SourceType       SourceType       `json:"source_type"`
+	SourceURL        string           `json:"source_url"`
+	SourceUsername   string           `json:"source_username"`
+	SourcePassword   string           `json:"-"` // Never include in JSON
+	DestURL          string           `json:"dest_url"`
+	DestUsername     string           `json:"dest_username"`
+	DestPassword     string           `json:"-"` // Never include in JSON
+	SyncInterval     int              `json:"sync_interval"`
+	ConflictStrategy ConflictStrategy `json:"conflict_strategy"`
+	Enabled          bool             `json:"enabled"`
+	LastSyncAt       *time.Time       `json:"last_sync_at"`
+	LastSyncStatus   SyncStatus       `json:"last_sync_status"`
+	LastSyncMessage  string           `json:"last_sync_message"`
+	CreatedAt        time.Time        `json:"created_at"`
+	UpdatedAt        time.Time        `json:"updated_at"`
+}
+
+// SyncState represents the synchronization state for a calendar.
+type SyncState struct {
+	ID           string    `json:"id"`
+	SourceID     string    `json:"source_id"`
+	CalendarHref string    `json:"calendar_href"`
+	SyncToken    string    `json:"sync_token"`
+	CTag         string    `json:"ctag"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// SyncLog represents a log entry for a sync operation.
+type SyncLog struct {
+	ID        string        `json:"id"`
+	SourceID  string        `json:"source_id"`
+	Status    SyncStatus    `json:"status"`
+	Message   string        `json:"message"`
+	Details   string        `json:"details"`
+	Duration  time.Duration `json:"duration"`
+	CreatedAt time.Time     `json:"created_at"`
+}
