@@ -31,9 +31,8 @@ RUN addgroup -g 1000 calbridge && \
 
 WORKDIR /app
 
-# Copy binary from builder
+# Copy binary from builder (templates are embedded via go:embed)
 COPY --from=builder /app/calbridge /app/calbridge
-COPY ui/ /app/ui/
 
 # Copy entrypoint script
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
