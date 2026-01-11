@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -282,7 +283,13 @@ func parseEventPaths(body []byte, basePath string) []string {
 		// Check if it's a calendar object (ends with .ics or has calendar content type)
 		if strings.HasSuffix(resp.Href, ".ics") ||
 			strings.Contains(resp.PropStat.Prop.ContentType, "calendar") {
-			paths = append(paths, resp.Href)
+			// URL-decode the path to avoid double-encoding when making requests
+			decodedPath, err := url.PathUnescape(resp.Href)
+			if err != nil {
+				// If decoding fails, use original path
+				decodedPath = resp.Href
+			}
+			paths = append(paths, decodedPath)
 		}
 	}
 	return paths
