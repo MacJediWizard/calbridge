@@ -31,8 +31,11 @@ RUN addgroup -g 1000 calbridge && \
 
 WORKDIR /app
 
-# Copy binary from builder (templates are embedded via go:embed)
+# Copy binary from builder
 COPY --from=builder /app/calbridge /app/calbridge
+
+# Copy React frontend build
+COPY --from=builder /app/web/dist /app/web/dist
 
 # Copy entrypoint script
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
