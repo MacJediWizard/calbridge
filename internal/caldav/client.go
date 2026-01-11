@@ -167,14 +167,8 @@ func (c *Client) getEventsViaQuery(ctx context.Context, calendarPath string) ([]
 
 // getEventsViaPropfind uses PROPFIND to list calendar objects, then fetches each one.
 func (c *Client) getEventsViaPropfind(ctx context.Context, calendarPath string) ([]Event, error) {
-	// Use calendar multiget to get all objects
-	objects, err := c.caldavClient.MultiGetCalendar(ctx, calendarPath, nil)
-	if err != nil {
-		// If multiget fails, try getting individual objects via PROPFIND list
-		return c.getEventsViaList(ctx, calendarPath)
-	}
-
-	return c.objectsToEvents(objects), nil
+	// Go directly to PROPFIND list since MultiGetCalendar requires specific paths
+	return c.getEventsViaList(ctx, calendarPath)
 }
 
 // getEventsViaList lists calendar contents and fetches each event individually.
