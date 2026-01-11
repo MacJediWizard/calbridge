@@ -1,89 +1,91 @@
 {{define "content"}}
-<div class="px-4 py-6 sm:px-0">
-    <div class="mb-6">
+<div class="space-y-8">
+    <div>
         <div class="flex items-center">
-            <a href="/sources" class="text-indigo-600 hover:text-indigo-900 mr-2">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <a href="/sources" class="text-mjw-accent hover:text-mjw-accent-dark mr-3 transition-colors">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
             </a>
-            <h1 class="text-2xl font-bold text-gray-900">Sync Logs: {{.Source.Name}}</h1>
+            <h1 class="text-3xl font-orbitron font-bold text-white glow-text">Sync Logs: {{.Source.Name}}</h1>
         </div>
-        <p class="mt-1 text-sm text-gray-600">View synchronization history for this source.</p>
+        <p class="mt-2 text-gray-400 ml-9">View synchronization history for this source.</p>
     </div>
 
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="bg-mjw-dark rounded-xl border border-mjw-light overflow-hidden">
         {{if .Logs}}
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
-                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {{range .Logs}}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{.CreatedAt.Format "Jan 02, 15:04:05"}}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                            {{if eq .Status "success"}}bg-green-100 text-green-800
-                            {{else if eq .Status "error"}}bg-red-100 text-red-800
-                            {{else}}bg-gray-100 text-gray-800{{end}}">
-                            {{if eq .Status "success"}}Success
-                            {{else if eq .Status "error"}}Error
-                            {{else}}{{.Status}}{{end}}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">
-                        <div>{{.Message}}</div>
-                        {{if .Details}}
-                        <details class="mt-1">
-                            <summary class="text-xs text-indigo-600 cursor-pointer hover:text-indigo-900">Show details</summary>
-                            <pre class="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">{{.Details}}</pre>
-                        </details>
-                        {{end}}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {{if .Duration}}
-                            {{printf "%.2fs" .Duration.Seconds}}
-                        {{else}}
-                            -
-                        {{end}}
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+        <div class="overflow-x-auto">
+            <table class="min-w-full">
+                <thead class="bg-mjw-gray">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-orbitron font-semibold text-gray-400 uppercase tracking-wider">Time</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-orbitron font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-orbitron font-semibold text-gray-400 uppercase tracking-wider">Message</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-orbitron font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-mjw-light">
+                    {{range .Logs}}
+                    <tr class="hover:bg-mjw-gray/50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                            {{.CreatedAt.Format "Jan 02, 15:04:05"}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full
+                                {{if eq .Status "success"}}bg-mjw-success/10 text-mjw-success border border-mjw-success/30
+                                {{else if eq .Status "error"}}bg-mjw-error/10 text-mjw-error border border-mjw-error/30
+                                {{else}}bg-mjw-gray text-gray-400 border border-mjw-light{{end}}">
+                                {{if eq .Status "success"}}Success
+                                {{else if eq .Status "error"}}Error
+                                {{else}}{{.Status}}{{end}}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-300">
+                            <div>{{.Message}}</div>
+                            {{if .Details}}
+                            <details class="mt-2">
+                                <summary class="text-xs text-mjw-accent cursor-pointer hover:text-mjw-accent-dark transition-colors">Show details</summary>
+                                <pre class="mt-2 text-xs bg-mjw-gray text-gray-300 p-3 rounded-lg overflow-x-auto border border-mjw-light">{{.Details}}</pre>
+                            </details>
+                            {{end}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                            {{if .Duration}}
+                                {{printf "%.2fs" .Duration.Seconds}}
+                            {{else}}
+                                -
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
 
         {{if gt .TotalPages 1}}
-        <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div class="px-6 py-4 flex items-center justify-between border-t border-mjw-light">
             <div class="flex-1 flex justify-between sm:hidden">
                 {{if gt .Page 1}}
-                <a href="/sources/{{.Source.ID}}/logs?page={{minus .Page 1}}" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <a href="/sources/{{.Source.ID}}/logs?page={{minus .Page 1}}" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 bg-mjw-gray border border-mjw-light hover:bg-mjw-light transition-all">
                     Previous
                 </a>
                 {{end}}
                 {{if lt .Page .TotalPages}}
-                <a href="/sources/{{.Source.ID}}/logs?page={{plus .Page 1}}" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <a href="/sources/{{.Source.ID}}/logs?page={{plus .Page 1}}" class="ml-3 px-4 py-2 rounded-lg text-sm font-medium text-gray-300 bg-mjw-gray border border-mjw-light hover:bg-mjw-light transition-all">
                     Next
                 </a>
                 {{end}}
             </div>
             <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-sm text-gray-700">
-                        Showing page <span class="font-medium">{{.Page}}</span> of <span class="font-medium">{{.TotalPages}}</span>
+                    <p class="text-sm text-gray-400">
+                        Showing page <span class="font-medium text-white">{{.Page}}</span> of <span class="font-medium text-white">{{.TotalPages}}</span>
                     </p>
                 </div>
                 <div>
-                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <nav class="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px" aria-label="Pagination">
                         {{if gt .Page 1}}
-                        <a href="/sources/{{.Source.ID}}/logs?page={{minus .Page 1}}" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <a href="/sources/{{.Source.ID}}/logs?page={{minus .Page 1}}" class="relative inline-flex items-center px-3 py-2 rounded-l-lg border border-mjw-light bg-mjw-gray text-sm font-medium text-gray-400 hover:bg-mjw-light hover:text-white transition-all">
                             <span class="sr-only">Previous</span>
                             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -91,7 +93,7 @@
                         </a>
                         {{end}}
                         {{if lt .Page .TotalPages}}
-                        <a href="/sources/{{.Source.ID}}/logs?page={{plus .Page 1}}" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                        <a href="/sources/{{.Source.ID}}/logs?page={{plus .Page 1}}" class="relative inline-flex items-center px-3 py-2 rounded-r-lg border border-mjw-light bg-mjw-gray text-sm font-medium text-gray-400 hover:bg-mjw-light hover:text-white transition-all">
                             <span class="sr-only">Next</span>
                             <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
@@ -104,12 +106,14 @@
         </div>
         {{end}}
         {{else}}
-        <div class="text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">No sync logs</h3>
-            <p class="mt-1 text-sm text-gray-500">Sync logs will appear here after the first synchronization.</p>
+        <div class="text-center py-16">
+            <div class="h-16 w-16 mx-auto bg-mjw-gray rounded-xl flex items-center justify-center border border-mjw-light">
+                <svg class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </div>
+            <h3 class="mt-4 text-lg font-orbitron font-semibold text-white">No sync logs</h3>
+            <p class="mt-2 text-gray-400">Sync logs will appear here after the first synchronization.</p>
         </div>
         {{end}}
     </div>

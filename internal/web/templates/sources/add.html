@@ -1,35 +1,36 @@
 {{define "content"}}
-<div class="px-4 py-6 sm:px-0">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Add Calendar Source</h1>
-        <p class="mt-1 text-sm text-gray-600">Configure a new calendar synchronization source.</p>
+<div class="space-y-8">
+    <div>
+        <h1 class="text-3xl font-orbitron font-bold text-white glow-text">Add Calendar Source</h1>
+        <p class="mt-2 text-gray-400">Configure a new calendar synchronization source.</p>
     </div>
 
-    <div class="bg-white shadow sm:rounded-lg">
-        <form action="/sources/add" method="POST" class="space-y-6 p-6">
+    <div class="bg-mjw-dark rounded-xl border border-mjw-light overflow-hidden">
+        <form action="/sources/add" method="POST" class="p-6 space-y-8">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
             {{if .Error}}
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <div class="bg-mjw-error/10 border border-mjw-error/50 text-mjw-error px-4 py-3 rounded-lg" role="alert">
                 {{.Error}}
             </div>
             {{end}}
 
             <!-- General Settings -->
-            <div class="border-b border-gray-200 pb-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">General Settings</h3>
-                <div class="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            <div class="border-b border-mjw-light pb-8">
+                <h3 class="text-lg font-orbitron font-semibold text-mjw-accent">General Settings</h3>
+                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
                     <div class="sm:col-span-4">
-                        <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+                        <label for="name" class="block text-sm font-medium text-gray-300">Name</label>
                         <input type="text" name="name" id="name" value="{{.Form.Name}}" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        <p class="mt-1 text-sm text-gray-500">A friendly name for this sync source.</p>
+                            placeholder="My Calendar Sync"
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                        <p class="mt-2 text-sm text-gray-500">A friendly name for this sync source.</p>
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="source_type" class="block text-sm font-medium text-gray-700">Source Type</label>
+                        <label for="source_type" class="block text-sm font-medium text-gray-300">Source Type</label>
                         <select name="source_type" id="source_type" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                             <option value="caldav" {{if eq .Form.SourceType "caldav"}}selected{{end}}>CalDAV</option>
                             <option value="google" {{if eq .Form.SourceType "google"}}selected{{end}}>Google Calendar</option>
                             <option value="outlook" {{if eq .Form.SourceType "outlook"}}selected{{end}}>Outlook</option>
@@ -37,9 +38,9 @@
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="sync_interval" class="block text-sm font-medium text-gray-700">Sync Interval</label>
+                        <label for="sync_interval" class="block text-sm font-medium text-gray-300">Sync Interval</label>
                         <select name="sync_interval" id="sync_interval" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                             <option value="300" {{if eq .Form.SyncInterval 300}}selected{{end}}>5 minutes</option>
                             <option value="900" {{if eq .Form.SyncInterval 900}}selected{{end}}>15 minutes</option>
                             <option value="1800" {{if eq .Form.SyncInterval 1800}}selected{{end}}>30 minutes</option>
@@ -51,77 +52,89 @@
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="conflict_strategy" class="block text-sm font-medium text-gray-700">Conflict Strategy</label>
+                        <label for="conflict_strategy" class="block text-sm font-medium text-gray-300">Conflict Strategy</label>
                         <select name="conflict_strategy" id="conflict_strategy" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                             <option value="source_wins" {{if eq .Form.ConflictStrategy "source_wins"}}selected{{end}}>Source Wins</option>
                             <option value="dest_wins" {{if eq .Form.ConflictStrategy "dest_wins"}}selected{{end}}>Destination Wins</option>
                             <option value="newest_wins" {{if eq .Form.ConflictStrategy "newest_wins"}}selected{{end}}>Newest Wins</option>
                         </select>
-                        <p class="mt-1 text-sm text-gray-500">How to handle conflicts when events differ.</p>
+                        <p class="mt-2 text-sm text-gray-500">How to handle conflicts when events differ.</p>
                     </div>
                 </div>
             </div>
 
             <!-- Source Server -->
-            <div class="border-b border-gray-200 pb-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Source Server</h3>
+            <div class="border-b border-mjw-light pb-8">
+                <h3 class="text-lg font-orbitron font-semibold text-mjw-accent">Source Server</h3>
                 <p class="mt-1 text-sm text-gray-500">The CalDAV server to sync events from.</p>
-                <div class="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
                     <div class="sm:col-span-6">
-                        <label for="source_url" class="block text-sm font-medium text-gray-700">CalDAV URL</label>
+                        <label for="source_url" class="block text-sm font-medium text-gray-300">CalDAV URL</label>
                         <input type="url" name="source_url" id="source_url" value="{{.Form.SourceURL}}" required
                             placeholder="https://caldav.example.com/calendars/user/"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="source_username" class="block text-sm font-medium text-gray-700">Username</label>
+                        <label for="source_username" class="block text-sm font-medium text-gray-300">Username</label>
                         <input type="text" name="source_username" id="source_username" value="{{.Form.SourceUsername}}" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            placeholder="user@example.com"
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="source_password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <label for="source_password" class="block text-sm font-medium text-gray-300">Password</label>
                         <input type="password" name="source_password" id="source_password" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        <p class="mt-1 text-sm text-gray-500">Stored encrypted with AES-256-GCM.</p>
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                        <p class="mt-2 text-sm text-gray-500 flex items-center">
+                            <svg class="h-4 w-4 mr-1 text-mjw-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Stored encrypted with AES-256-GCM
+                        </p>
                     </div>
                 </div>
             </div>
 
             <!-- Destination Server -->
-            <div class="pb-6">
-                <h3 class="text-lg leading-6 font-medium text-gray-900">Destination Server</h3>
+            <div class="pb-4">
+                <h3 class="text-lg font-orbitron font-semibold text-mjw-accent">Destination Server</h3>
                 <p class="mt-1 text-sm text-gray-500">The CalDAV server to sync events to.</p>
-                <div class="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
                     <div class="sm:col-span-6">
-                        <label for="dest_url" class="block text-sm font-medium text-gray-700">CalDAV URL</label>
+                        <label for="dest_url" class="block text-sm font-medium text-gray-300">CalDAV URL</label>
                         <input type="url" name="dest_url" id="dest_url" value="{{.Form.DestURL}}" required
                             placeholder="https://caldav.example.com/calendars/user/"
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="dest_username" class="block text-sm font-medium text-gray-700">Username</label>
+                        <label for="dest_username" class="block text-sm font-medium text-gray-300">Username</label>
                         <input type="text" name="dest_username" id="dest_username" value="{{.Form.DestUsername}}" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            placeholder="user@example.com"
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
                     </div>
 
                     <div class="sm:col-span-3">
-                        <label for="dest_password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <label for="dest_password" class="block text-sm font-medium text-gray-300">Password</label>
                         <input type="password" name="dest_password" id="dest_password" required
-                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        <p class="mt-1 text-sm text-gray-500">Stored encrypted with AES-256-GCM.</p>
+                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                        <p class="mt-2 text-sm text-gray-500 flex items-center">
+                            <svg class="h-4 w-4 mr-1 text-mjw-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Stored encrypted with AES-256-GCM
+                        </p>
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-3">
-                <a href="/sources" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <div class="flex justify-end space-x-4 pt-6 border-t border-mjw-light">
+                <a href="/sources" class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-300 bg-mjw-gray border border-mjw-light hover:bg-mjw-light hover:text-white transition-all">
                     Cancel
                 </a>
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <button type="submit" class="px-5 py-2.5 border border-mjw-accent text-sm font-orbitron font-semibold rounded-lg text-mjw-black bg-mjw-accent hover:bg-mjw-accent-dark hover:shadow-lg hover:shadow-mjw-accent/30 transition-all duration-300 glow">
                     Add Source
                 </button>
             </div>

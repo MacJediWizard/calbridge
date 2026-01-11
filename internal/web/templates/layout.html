@@ -6,8 +6,41 @@
     <title>{{.Title}} - CalBridge</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'mjw-black': '#000000',
+                        'mjw-dark': '#0a0a0a',
+                        'mjw-gray': '#1a1a1a',
+                        'mjw-light': '#2a2a2a',
+                        'mjw-accent': '#00d4ff',
+                        'mjw-accent-dark': '#00a3cc',
+                        'mjw-success': '#00ff88',
+                        'mjw-error': '#ff4444',
+                        'mjw-warning': '#ffaa00',
+                    },
+                    fontFamily: {
+                        'orbitron': ['Orbitron', 'monospace'],
+                        'roboto': ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Custom loading indicator */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Orbitron', monospace;
+        }
         .htmx-indicator {
             display: none;
         }
@@ -17,27 +50,45 @@
         .htmx-request.htmx-indicator {
             display: inline;
         }
+        .glow {
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        .glow-text {
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+        input, select, textarea {
+            background-color: #1a1a1a !important;
+            border-color: #2a2a2a !important;
+            color: #ffffff !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #00d4ff !important;
+            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2) !important;
+        }
+        input::placeholder {
+            color: #666666 !important;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-indigo-600 text-white shadow-lg">
+<body class="bg-mjw-black min-h-screen font-roboto">
+    <nav class="bg-mjw-dark border-b border-mjw-light">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
-                    <a href="/" class="text-xl font-bold">CalBridge</a>
+                    <a href="/" class="text-xl font-orbitron font-bold text-mjw-accent glow-text">CalBridge</a>
                     {{if .User}}
                     <div class="ml-10 flex items-baseline space-x-4">
-                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 {{if eq .ActiveNav "dashboard"}}bg-indigo-700{{end}}">Dashboard</a>
-                        <a href="/sources" class="px-3 py-2 rounded-md text-sm font-medium hover:bg-indigo-500 {{if eq .ActiveNav "sources"}}bg-indigo-700{{end}}">Sources</a>
+                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-mjw-accent hover:bg-mjw-gray transition-all {{if eq .ActiveNav "dashboard"}}text-mjw-accent bg-mjw-gray{{end}}">Dashboard</a>
+                        <a href="/sources" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-mjw-accent hover:bg-mjw-gray transition-all {{if eq .ActiveNav "sources"}}text-mjw-accent bg-mjw-gray{{end}}">Sources</a>
                     </div>
                     {{end}}
                 </div>
                 {{if .User}}
                 <div class="flex items-center">
-                    <span class="text-sm mr-4">{{.User.Email}}</span>
+                    <span class="text-sm text-gray-400 mr-4">{{.User.Email}}</span>
                     <form action="/auth/logout" method="POST" class="inline">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                        <button type="submit" class="px-3 py-2 rounded-md text-sm font-medium bg-indigo-700 hover:bg-indigo-800">Logout</button>
+                        <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium bg-mjw-gray text-gray-300 hover:bg-mjw-light hover:text-white transition-all border border-mjw-light">Logout</button>
                     </form>
                 </div>
                 {{end}}
@@ -45,9 +96,9 @@
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {{if .Flash}}
-        <div class="mb-4 p-4 rounded-md {{if eq .Flash.Type "error"}}bg-red-100 text-red-700{{else if eq .Flash.Type "success"}}bg-green-100 text-green-700{{else}}bg-blue-100 text-blue-700{{end}}">
+        <div class="mb-6 p-4 rounded-lg border {{if eq .Flash.Type "error"}}bg-mjw-error/10 border-mjw-error/50 text-mjw-error{{else if eq .Flash.Type "success"}}bg-mjw-success/10 border-mjw-success/50 text-mjw-success{{else}}bg-mjw-accent/10 border-mjw-accent/50 text-mjw-accent{{end}}">
             {{.Flash.Message}}
         </div>
         {{end}}
@@ -55,9 +106,10 @@
         {{template "content" .}}
     </main>
 
-    <footer class="bg-gray-800 text-gray-400 py-4 mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
-            CalBridge - CalDAV Synchronization
+    <footer class="bg-mjw-dark border-t border-mjw-light py-6 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-gray-500 text-sm">CalBridge - CalDAV Synchronization</p>
+            <p class="text-gray-600 text-xs mt-1">Powered by MacJediWizard Digital Wizardry</p>
         </div>
     </footer>
 </body>
