@@ -401,7 +401,9 @@ func (c *Client) PutEvent(ctx context.Context, calendarPath string, event *Event
 		if event.UID != "" {
 			path = strings.TrimSuffix(calendarPath, "/") + "/" + event.UID + ".ics"
 		} else {
-			path = calendarPath
+			// Skip events without UID - can't create a valid path
+			log.Printf("PutEvent: skipping event without UID (summary: %s)", event.Summary)
+			return nil
 		}
 	}
 
@@ -450,14 +452,49 @@ func normalizeStartTime(prop *ical.Prop) string {
 		return ""
 	}
 
-	// Try to parse the datetime properly using the library's method
-	t, err := prop.DateTime(time.UTC)
-	if err == nil {
-		// Successfully parsed - return UTC formatted string
+	value := prop.Value
+
+	// Check for UTC format (ends with Z)
+	if strings.HasSuffix(value, "Z") {
+		// Already UTC, parse and reformat to ensure consistent format
+		t, err := time.Parse("20060102T150405Z", value)
+		if err == nil {
+			return t.Format("20060102T150405Z")
+		}
+		return value
+	}
+
+	// Check for TZID parameter
+	if tzidParam := prop.Params.Get("TZID"); tzidParam != "" {
+		// Try to load the timezone
+		loc, err := time.LoadLocation(tzidParam)
+		if err != nil {
+			log.Printf("normalizeStartTime: failed to load timezone %s: %v", tzidParam, err)
+			// Try the go-ical library method as fallback
+			t, err := prop.DateTime(time.UTC)
+			if err == nil {
+				return t.UTC().Format("20060102T150405Z")
+			}
+			return value
+		}
+
+		// Parse the datetime in the specified timezone
+		t, err := time.ParseInLocation("20060102T150405", value, loc)
+		if err != nil {
+			log.Printf("normalizeStartTime: failed to parse datetime %s: %v", value, err)
+			return value
+		}
+
+		// Convert to UTC
 		return t.UTC().Format("20060102T150405Z")
 	}
 
-	// If parsing fails, fall back to the raw value
-	// This ensures we still have something for comparison
-	return prop.Value
+	// Try the go-ical library method for other cases
+	t, err := prop.DateTime(time.UTC)
+	if err == nil {
+		return t.UTC().Format("20060102T150405Z")
+	}
+
+	// Fall back to the raw value
+	return value
 }

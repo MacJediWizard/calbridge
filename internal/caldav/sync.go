@@ -265,6 +265,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		key := e.DedupeKey()
 		if key != "|" { // Skip if both summary and start time are empty
 			destDedupeMap[key] = true
+			log.Printf("Dest dedupe key: %q (UID: %s)", key, e.UID)
 		}
 	}
 
@@ -277,10 +278,11 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		if !existsByUID {
 			// Check for duplicate by content (same summary + start time)
 			dedupeKey := sourceEvent.DedupeKey()
+			log.Printf("Source dedupe key: %q (UID: %s)", dedupeKey, sourceEvent.UID)
 			if dedupeKey != "|" && destDedupeMap[dedupeKey] {
 				// Event with same content already exists, skip
 				skippedDupes++
-				log.Printf("Skipping duplicate event: %s at %s", sourceEvent.Summary, sourceEvent.StartTime)
+				log.Printf("Skipping duplicate event: %s at %s (dedupe key match)", sourceEvent.Summary, sourceEvent.StartTime)
 				continue
 			}
 
