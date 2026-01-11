@@ -317,10 +317,12 @@ func (db *DB) CreateSyncLog(log *SyncLog) error {
 	}
 	log.CreatedAt = time.Now().UTC()
 
-	query := `INSERT INTO sync_logs (id, source_id, status, message, details, duration_ms, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO sync_logs (id, source_id, status, message, details, duration_ms,
+		events_created, events_updated, events_deleted, events_skipped, calendars_synced, events_processed, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	_, err := db.conn.Exec(query, log.ID, log.SourceID, log.Status, log.Message, log.Details, log.Duration.Milliseconds(), log.CreatedAt)
+	_, err := db.conn.Exec(query, log.ID, log.SourceID, log.Status, log.Message, log.Details, log.Duration.Milliseconds(),
+		log.EventsCreated, log.EventsUpdated, log.EventsDeleted, log.EventsSkipped, log.CalendarsSynced, log.EventsProcessed, log.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create sync log: %w", err)
 	}
@@ -330,7 +332,8 @@ func (db *DB) CreateSyncLog(log *SyncLog) error {
 
 // GetSyncLogs returns sync logs for a source.
 func (db *DB) GetSyncLogs(sourceID string, limit int) ([]*SyncLog, error) {
-	query := `SELECT id, source_id, status, message, details, duration_ms, created_at
+	query := `SELECT id, source_id, status, message, details, duration_ms,
+		events_created, events_updated, events_deleted, events_skipped, calendars_synced, events_processed, created_at
 		FROM sync_logs WHERE source_id = ? ORDER BY created_at DESC LIMIT ?`
 
 	rows, err := db.conn.Query(query, sourceID, limit)
@@ -343,7 +346,8 @@ func (db *DB) GetSyncLogs(sourceID string, limit int) ([]*SyncLog, error) {
 	for rows.Next() {
 		log := &SyncLog{}
 		var durationMs int64
-		err := rows.Scan(&log.ID, &log.SourceID, &log.Status, &log.Message, &log.Details, &durationMs, &log.CreatedAt)
+		err := rows.Scan(&log.ID, &log.SourceID, &log.Status, &log.Message, &log.Details, &durationMs,
+			&log.EventsCreated, &log.EventsUpdated, &log.EventsDeleted, &log.EventsSkipped, &log.CalendarsSynced, &log.EventsProcessed, &log.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan sync log: %w", err)
 		}

@@ -31,13 +31,19 @@ type APISource struct {
 
 // APISyncLog represents a sync log in JSON format for the API.
 type APISyncLog struct {
-	ID        string   `json:"id"`
-	SourceID  string   `json:"source_id"`
-	Status    string   `json:"status"`
-	Message   string   `json:"message"`
-	Details   *string  `json:"details"`
-	Duration  *float64 `json:"duration"`
-	CreatedAt string   `json:"created_at"`
+	ID              string   `json:"id"`
+	SourceID        string   `json:"source_id"`
+	Status          string   `json:"status"`
+	Message         string   `json:"message"`
+	Details         *string  `json:"details"`
+	EventsCreated   int      `json:"events_created"`
+	EventsUpdated   int      `json:"events_updated"`
+	EventsDeleted   int      `json:"events_deleted"`
+	EventsSkipped   int      `json:"events_skipped"`
+	CalendarsSynced int      `json:"calendars_synced"`
+	EventsProcessed int      `json:"events_processed"`
+	Duration        *float64 `json:"duration"`
+	CreatedAt       string   `json:"created_at"`
 }
 
 // APIDashboardStats represents dashboard statistics.
@@ -89,11 +95,17 @@ func sourceToAPI(s *db.Source) *APISource {
 // syncLogToAPI converts a db.SyncLog to APISyncLog.
 func syncLogToAPI(l *db.SyncLog) *APISyncLog {
 	api := &APISyncLog{
-		ID:        l.ID,
-		SourceID:  l.SourceID,
-		Status:    string(l.Status),
-		Message:   l.Message,
-		CreatedAt: l.CreatedAt.Format(time.RFC3339),
+		ID:              l.ID,
+		SourceID:        l.SourceID,
+		Status:          string(l.Status),
+		Message:         l.Message,
+		EventsCreated:   l.EventsCreated,
+		EventsUpdated:   l.EventsUpdated,
+		EventsDeleted:   l.EventsDeleted,
+		EventsSkipped:   l.EventsSkipped,
+		CalendarsSynced: l.CalendarsSynced,
+		EventsProcessed: l.EventsProcessed,
+		CreatedAt:       l.CreatedAt.Format(time.RFC3339),
 	}
 	if l.Details != "" {
 		api.Details = &l.Details

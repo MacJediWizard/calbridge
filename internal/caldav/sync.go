@@ -13,13 +13,16 @@ import (
 
 // SyncResult represents the result of a sync operation.
 type SyncResult struct {
-	Success  bool          `json:"success"`
-	Message  string        `json:"message"`
-	Created  int           `json:"created"`
-	Updated  int           `json:"updated"`
-	Deleted  int           `json:"deleted"`
-	Errors   []string      `json:"errors,omitempty"`
-	Duration time.Duration `json:"duration"`
+	Success         bool          `json:"success"`
+	Message         string        `json:"message"`
+	Created         int           `json:"created"`
+	Updated         int           `json:"updated"`
+	Deleted         int           `json:"deleted"`
+	Skipped         int           `json:"skipped"`
+	CalendarsSynced int           `json:"calendars_synced"`
+	EventsProcessed int           `json:"events_processed"`
+	Errors          []string      `json:"errors,omitempty"`
+	Duration        time.Duration `json:"duration"`
 }
 
 // SyncEngine orchestrates calendar synchronization.
@@ -126,13 +129,16 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 		result.Created += calResult.Created
 		result.Updated += calResult.Updated
 		result.Deleted += calResult.Deleted
+		result.Skipped += calResult.Skipped
+		result.EventsProcessed += calResult.EventsProcessed
 		result.Errors = append(result.Errors, calResult.Errors...)
 	}
 
+	result.CalendarsSynced = len(sourceCalendars)
 	result.Success = len(result.Errors) == 0
 	if result.Success {
-		result.Message = fmt.Sprintf("Synced %d calendars: %d created, %d updated, %d deleted",
-			len(sourceCalendars), result.Created, result.Updated, result.Deleted)
+		result.Message = fmt.Sprintf("Synced %d calendar(s): %d created, %d updated, %d deleted, %d skipped",
+			len(sourceCalendars), result.Created, result.Updated, result.Deleted, result.Skipped)
 	} else {
 		result.Message = fmt.Sprintf("Sync completed with %d errors", len(result.Errors))
 	}
@@ -301,6 +307,10 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		delete(destEventMap, sourceEvent.UID)
 	}
 
+	// Track skipped duplicates and total events processed
+	result.Skipped = skippedDupes
+	result.EventsProcessed = len(sourceEvents)
+
 	if skippedDupes > 0 {
 		log.Printf("Skipped %d duplicate events", skippedDupes)
 	}
@@ -359,12 +369,18 @@ func (se *SyncEngine) finishSync(sourceID string, result *SyncResult) {
 		log.Printf("Failed to update sync status: %v", err)
 	}
 
-	// Create sync log
+	// Create sync log with detailed stats
 	syncLog := &db.SyncLog{
-		SourceID: sourceID,
-		Status:   status,
-		Message:  result.Message,
-		Duration: result.Duration,
+		SourceID:        sourceID,
+		Status:          status,
+		Message:         result.Message,
+		Duration:        result.Duration,
+		EventsCreated:   result.Created,
+		EventsUpdated:   result.Updated,
+		EventsDeleted:   result.Deleted,
+		EventsSkipped:   result.Skipped,
+		CalendarsSynced: result.CalendarsSynced,
+		EventsProcessed: result.EventsProcessed,
 	}
 	if len(result.Errors) > 0 {
 		syncLog.Details = fmt.Sprintf("Errors: %v", result.Errors)

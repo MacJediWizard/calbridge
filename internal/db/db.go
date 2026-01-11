@@ -153,6 +153,14 @@ func (db *DB) migrate() error {
 
 		// Migration: Add sync_direction column to sources
 		`ALTER TABLE sources ADD COLUMN sync_direction TEXT NOT NULL DEFAULT 'one_way'`,
+
+		// Migration: Add detailed stats columns to sync_logs
+		`ALTER TABLE sync_logs ADD COLUMN events_created INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sync_logs ADD COLUMN events_updated INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sync_logs ADD COLUMN events_deleted INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sync_logs ADD COLUMN events_skipped INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sync_logs ADD COLUMN calendars_synced INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sync_logs ADD COLUMN events_processed INTEGER NOT NULL DEFAULT 0`,
 	}
 
 	for _, migration := range migrations {

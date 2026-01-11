@@ -81,6 +81,7 @@ export default function SourceLogs() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Time</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Stats</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Message</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Duration</th>
                   </tr>
@@ -102,14 +103,51 @@ export default function SourceLogs() {
                           {log.status === 'success' ? 'OK' : log.status === 'error' ? 'Error' : log.status}
                         </span>
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-1.5">
+                          {log.calendars_synced > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-900/50 text-blue-400">
+                              {log.calendars_synced} cal
+                            </span>
+                          )}
+                          {log.events_created > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-900/50 text-green-400">
+                              +{log.events_created}
+                            </span>
+                          )}
+                          {log.events_updated > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-yellow-900/50 text-yellow-400">
+                              ~{log.events_updated}
+                            </span>
+                          )}
+                          {log.events_deleted > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-red-900/50 text-red-400">
+                              -{log.events_deleted}
+                            </span>
+                          )}
+                          {log.events_skipped > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-zinc-700 text-gray-400">
+                              skip:{log.events_skipped}
+                            </span>
+                          )}
+                          {log.events_processed > 0 && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-zinc-800 text-gray-500">
+                              {log.events_processed} total
+                            </span>
+                          )}
+                          {log.events_processed === 0 && log.calendars_synced === 0 && (
+                            <span className="text-xs text-gray-500">-</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-gray-300">
-                        <div>{log.message}</div>
+                        <div className="max-w-md truncate" title={log.message}>{log.message}</div>
                         {log.details && (
                           <details className="mt-1">
                             <summary className="text-xs text-red-400 cursor-pointer hover:text-red-300">
                               Details
                             </summary>
-                            <pre className="mt-1 text-xs text-gray-400 bg-black p-2 rounded overflow-x-auto">
+                            <pre className="mt-1 text-xs text-gray-400 bg-black p-2 rounded overflow-x-auto max-w-md">
                               {log.details}
                             </pre>
                           </details>

@@ -128,11 +128,17 @@ type SyncState struct {
 
 // SyncLog represents a log entry for a sync operation.
 type SyncLog struct {
-	ID        string        `json:"id"`
-	SourceID  string        `json:"source_id"`
-	Status    SyncStatus    `json:"status"`
-	Message   string        `json:"message"`
-	Details   string        `json:"details"`
-	Duration  time.Duration `json:"duration"`
-	CreatedAt time.Time     `json:"created_at"`
+	ID              string        `json:"id"`
+	SourceID        string        `json:"source_id"`
+	Status          SyncStatus    `json:"status"`
+	Message         string        `json:"message"`
+	Details         string        `json:"details"`
+	EventsCreated   int           `json:"events_created"`
+	EventsUpdated   int           `json:"events_updated"`
+	EventsDeleted   int           `json:"events_deleted"`
+	EventsSkipped   int           `json:"events_skipped"`
+	CalendarsSynced int           `json:"calendars_synced"`
+	EventsProcessed int           `json:"events_processed"`
+	Duration        time.Duration `json:"duration"`
+	CreatedAt       time.Time     `json:"created_at"`
 }

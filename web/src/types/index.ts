@@ -29,6 +29,12 @@ export interface SyncLog {
   status: string;
   message: string;
   details: string | null;
+  events_created: number;
+  events_updated: number;
+  events_deleted: number;
+  events_skipped: number;
+  calendars_synced: number;
+  events_processed: number;
   duration: number | null;
   created_at: string;
 }
