@@ -262,6 +262,8 @@ export default function SourceEdit() {
                     className={
                       source.sync_status === 'success'
                         ? 'text-green-400'
+                        : source.sync_status === 'partial'
+                        ? 'text-yellow-400'
                         : source.sync_status === 'error'
                         ? 'text-red-400'
                         : 'text-gray-400'
@@ -269,6 +271,8 @@ export default function SourceEdit() {
                   >
                     {source.sync_status === 'success'
                       ? 'OK'
+                      : source.sync_status === 'partial'
+                      ? 'Partial'
                       : source.sync_status === 'error'
                       ? 'Error'
                       : source.sync_status === 'running'

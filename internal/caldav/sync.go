@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/macjediwizard/calbridge/internal/crypto"
@@ -21,7 +22,8 @@ type SyncResult struct {
 	Skipped         int           `json:"skipped"`
 	CalendarsSynced int           `json:"calendars_synced"`
 	EventsProcessed int           `json:"events_processed"`
-	Errors          []string      `json:"errors,omitempty"`
+	Errors          []string      `json:"errors,omitempty"`   // Critical errors that prevent sync
+	Warnings        []string      `json:"warnings,omitempty"` // Non-critical issues (individual event failures)
 	Duration        time.Duration `json:"duration"`
 }
 
@@ -43,7 +45,8 @@ func NewSyncEngine(database *db.DB, encryptor *crypto.Encryptor) *SyncEngine {
 func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncResult {
 	start := time.Now()
 	result := &SyncResult{
-		Errors: make([]string, 0),
+		Errors:   make([]string, 0),
+		Warnings: make([]string, 0),
 	}
 
 	// Update status to running
@@ -132,15 +135,20 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 		result.Skipped += calResult.Skipped
 		result.EventsProcessed += calResult.EventsProcessed
 		result.Errors = append(result.Errors, calResult.Errors...)
+		result.Warnings = append(result.Warnings, calResult.Warnings...)
 	}
 
 	result.CalendarsSynced = len(sourceCalendars)
+	// Success if no critical errors (warnings are OK)
 	result.Success = len(result.Errors) == 0
-	if result.Success {
+	if result.Success && len(result.Warnings) == 0 {
 		result.Message = fmt.Sprintf("Synced %d calendar(s): %d created, %d updated, %d deleted, %d skipped",
 			len(sourceCalendars), result.Created, result.Updated, result.Deleted, result.Skipped)
+	} else if result.Success && len(result.Warnings) > 0 {
+		result.Message = fmt.Sprintf("Synced %d calendar(s) with %d warnings: %d created, %d updated, %d deleted, %d skipped",
+			len(sourceCalendars), len(result.Warnings), result.Created, result.Updated, result.Deleted, result.Skipped)
 	} else {
-		result.Message = fmt.Sprintf("Sync completed with %d errors", len(result.Errors))
+		result.Message = fmt.Sprintf("Sync failed with %d errors", len(result.Errors))
 	}
 
 	result.Duration = time.Since(start)
@@ -151,7 +159,8 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 
 func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourceClient, destClient *Client, calendar Calendar) *SyncResult {
 	result := &SyncResult{
-		Errors: make([]string, 0),
+		Errors:   make([]string, 0),
+		Warnings: make([]string, 0),
 	}
 
 	// Check for existing sync state
@@ -182,7 +191,7 @@ func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourc
 						Data: item.Data,
 					}
 					if err := destClient.PutEvent(ctx, destCalendarPath, event); err != nil {
-						result.Errors = append(result.Errors, fmt.Sprintf("Failed to sync event: %v", err))
+						result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to sync event: %v", err))
 					} else {
 						result.Updated++
 					}
@@ -220,7 +229,8 @@ func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourc
 
 func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceClient, destClient *Client, calendar Calendar) *SyncResult {
 	result := &SyncResult{
-		Errors: make([]string, 0),
+		Errors:   make([]string, 0),
+		Warnings: make([]string, 0),
 	}
 
 	// Get all events from source
@@ -294,7 +304,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 				// Event was deleted from source - delete from destination too
 				log.Printf("Event %s deleted from source, deleting from destination", uid)
 				if err := destClient.DeleteEvent(ctx, destEvent.Path); err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Failed to delete event from dest: %v", err))
+					result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete event from dest: %v", err))
 				} else {
 					result.Deleted++
 				}
@@ -311,7 +321,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 				// Event was deleted from destination - delete from source too
 				log.Printf("Event %s deleted from destination, deleting from source", uid)
 				if err := sourceClient.DeleteEvent(ctx, sourceEvent.Path); err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Failed to delete event from source: %v", err))
+					result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete event from source: %v", err))
 				} else {
 					result.Deleted++
 				}
@@ -352,7 +362,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 
 			// Create new event on destination
 			if err := destClient.PutEvent(ctx, destCalendarPath, &sourceEvent); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("Failed to create event on dest: %v", err))
+				result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to create event on dest: %v", err))
 			} else {
 				result.Created++
 				if dedupeKey != "|" {
@@ -364,7 +374,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 			// Update existing event
 			sourceEvent.Path = destEvent.Path
 			if err := destClient.PutEvent(ctx, destCalendarPath, &sourceEvent); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("Failed to update event on dest: %v", err))
+				result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to update event on dest: %v", err))
 			} else {
 				result.Updated++
 				currentUIDs[sourceEvent.UID] = true
@@ -402,7 +412,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 
 				// New event on destination - create on source
 				if err := sourceClient.PutEvent(ctx, calendar.Path, &destEvent); err != nil {
-					result.Errors = append(result.Errors, fmt.Sprintf("Failed to create event on source: %v", err))
+					result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to create event on source: %v", err))
 				} else {
 					result.Created++
 					currentUIDs[destEvent.UID] = true
@@ -411,7 +421,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 				if source.ConflictStrategy == db.ConflictDestWins {
 					destEvent.Path = sourceEvent.Path
 					if err := sourceClient.PutEvent(ctx, calendar.Path, &destEvent); err != nil {
-						result.Errors = append(result.Errors, fmt.Sprintf("Failed to update event on source: %v", err))
+						result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to update event on source: %v", err))
 					} else {
 						result.Updated++
 					}
@@ -427,7 +437,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	if source.SyncDirection == db.SyncDirectionOneWay && source.ConflictStrategy == db.ConflictSourceWins {
 		for _, event := range destEventMap {
 			if err := destClient.DeleteEvent(ctx, event.Path); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("Failed to delete orphan event: %v", err))
+				result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete orphan event: %v", err))
 			} else {
 				result.Deleted++
 			}
@@ -450,9 +460,14 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 }
 
 func (se *SyncEngine) finishSync(sourceID string, result *SyncResult) {
-	status := db.SyncStatusSuccess
+	// Determine status: error > partial > success
+	var status db.SyncStatus
 	if !result.Success {
 		status = db.SyncStatusError
+	} else if len(result.Warnings) > 0 {
+		status = db.SyncStatusPartial
+	} else {
+		status = db.SyncStatusSuccess
 	}
 
 	if err := se.db.UpdateSourceSyncStatus(sourceID, status, result.Message); err != nil {
@@ -472,8 +487,17 @@ func (se *SyncEngine) finishSync(sourceID string, result *SyncResult) {
 		CalendarsSynced: result.CalendarsSynced,
 		EventsProcessed: result.EventsProcessed,
 	}
+
+	// Include both errors and warnings in details
+	var details []string
 	if len(result.Errors) > 0 {
-		syncLog.Details = fmt.Sprintf("Errors: %v", result.Errors)
+		details = append(details, fmt.Sprintf("Errors: %v", result.Errors))
+	}
+	if len(result.Warnings) > 0 {
+		details = append(details, fmt.Sprintf("Warnings: %v", result.Warnings))
+	}
+	if len(details) > 0 {
+		syncLog.Details = strings.Join(details, "\n")
 	}
 
 	if err := se.db.CreateSyncLog(syncLog); err != nil {

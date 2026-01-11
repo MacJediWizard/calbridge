@@ -147,15 +147,19 @@ export default function SourcesList() {
                             className={`text-xs ${
                               source.sync_status === 'success'
                                 ? 'text-green-400'
+                                : source.sync_status === 'partial'
+                                ? 'text-yellow-400'
                                 : source.sync_status === 'error'
                                 ? 'text-red-400'
                                 : source.sync_status === 'running'
-                                ? 'text-yellow-400'
+                                ? 'text-blue-400'
                                 : 'text-gray-500'
                             }`}
                           >
                             {source.sync_status === 'success'
                               ? 'OK'
+                              : source.sync_status === 'partial'
+                              ? 'Warn'
                               : source.sync_status === 'error'
                               ? 'Err'
                               : source.sync_status === 'running'

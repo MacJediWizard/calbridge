@@ -95,12 +95,14 @@ export default function SourceLogs() {
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             log.status === 'success'
                               ? 'bg-green-900/50 text-green-400'
+                              : log.status === 'partial'
+                              ? 'bg-yellow-900/50 text-yellow-400'
                               : log.status === 'error'
                               ? 'bg-red-900/50 text-red-400'
                               : 'bg-zinc-800 text-gray-400'
                           }`}
                         >
-                          {log.status === 'success' ? 'OK' : log.status === 'error' ? 'Error' : log.status}
+                          {log.status === 'success' ? 'OK' : log.status === 'partial' ? 'Partial' : log.status === 'error' ? 'Error' : log.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">

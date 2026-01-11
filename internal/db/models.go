@@ -11,7 +11,8 @@ const (
 	SyncStatusPending SyncStatus = "pending"
 	SyncStatusRunning SyncStatus = "running"
 	SyncStatusSuccess SyncStatus = "success"
-	SyncStatusError   SyncStatus = "error"
+	SyncStatusPartial SyncStatus = "partial" // Sync completed with some non-critical warnings
+	SyncStatusError   SyncStatus = "error"   // Sync failed due to critical error
 )
 
 // ConflictStrategy represents how to handle sync conflicts.

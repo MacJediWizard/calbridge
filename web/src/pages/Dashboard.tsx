@@ -131,15 +131,19 @@ export default function Dashboard() {
                           className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             source.sync_status === 'success'
                               ? 'bg-green-900/50 text-green-400'
+                              : source.sync_status === 'partial'
+                              ? 'bg-yellow-900/50 text-yellow-400'
                               : source.sync_status === 'error'
                               ? 'bg-red-900/50 text-red-400'
                               : source.sync_status === 'running'
-                              ? 'bg-yellow-900/50 text-yellow-400'
+                              ? 'bg-blue-900/50 text-blue-400'
                               : 'bg-zinc-800 text-gray-400'
                           }`}
                         >
                           {source.sync_status === 'success'
                             ? 'Synced'
+                            : source.sync_status === 'partial'
+                            ? 'Partial'
                             : source.sync_status === 'error'
                             ? 'Error'
                             : source.sync_status === 'running'
