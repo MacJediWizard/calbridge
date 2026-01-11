@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/macjediwizard/calbridge/internal/auth"
+	"github.com/macjediwizard/calbridgesync/internal/auth"
 )
 
 // SetupRoutes configures all application routes.

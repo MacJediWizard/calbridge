@@ -13,7 +13,7 @@
 *.swo
 
 # Build artifacts
-calbridge
+calbridgesync
 dist/
 build/
 *.exe

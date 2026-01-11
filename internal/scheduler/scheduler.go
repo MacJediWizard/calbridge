@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/macjediwizard/calbridge/internal/caldav"
-	"github.com/macjediwizard/calbridge/internal/db"
+	"github.com/macjediwizard/calbridgesync/internal/caldav"
+	"github.com/macjediwizard/calbridgesync/internal/db"
 )
 
 const (

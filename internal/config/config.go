@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/macjediwizard/calbridge/internal/validator"
+	"github.com/macjediwizard/calbridgesync/internal/validator"
 )
 
 var (
@@ -125,7 +125,7 @@ func Load() (*Config, error) {
 	}
 
 	// Database configuration
-	cfg.Database.Path = getEnv("DATABASE_PATH", "./data/calbridge.db")
+	cfg.Database.Path = getEnv("DATABASE_PATH", "./data/calbridgesync.db")
 
 	// CalDAV configuration
 	cfg.CalDAV.DefaultDestURL = getEnvRequired("DEFAULT_DEST_URL")

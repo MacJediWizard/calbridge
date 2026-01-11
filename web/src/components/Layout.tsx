@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import type { User } from '../types';
 
-const LOGO_URL = 'https://cdn.macjediwizard.com/cdn/CalBridge%20Images/calbridge-06070e03.png';
+const LOGO_URL = 'https://cdn.macjediwizard.com/cdn/CalBridgeSync%20Images/calbridge-06070e03.png';
 
 interface LayoutProps {
   user: User | null;
@@ -29,7 +29,7 @@ export default function Layout({ user, onLogout }: LayoutProps) {
                 {!logoError ? (
                   <img
                     src={LOGO_URL}
-                    alt="CalBridge"
+                    alt="CalBridgeSync"
                     className="w-10 h-10 object-contain"
                     onError={() => setLogoError(true)}
                   />
@@ -39,7 +39,7 @@ export default function Layout({ user, onLogout }: LayoutProps) {
                   </div>
                 )}
                 <span className="text-lg font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
-                  CalBridge
+                  CalBridgeSync
                 </span>
               </Link>
               {user && (
@@ -105,7 +105,7 @@ export default function Layout({ user, onLogout }: LayoutProps) {
       {/* Footer */}
       <footer className="bg-zinc-900 border-t border-zinc-800 py-4 mt-auto">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <p className="text-gray-500 text-sm">CalBridge - CalDAV Synchronization</p>
+          <p className="text-gray-500 text-sm">CalBridgeSync - CalDAV Synchronization</p>
           <p className="text-gray-600 text-xs mt-1">Powered by MacJediWizard Digital Wizardry</p>
         </div>
       </footer>

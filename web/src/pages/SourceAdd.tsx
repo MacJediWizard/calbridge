@@ -265,7 +265,7 @@ export default function SourceAdd() {
           <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
             <h3 className="text-sm font-semibold text-white mb-2">Getting Started</h3>
             <p className="text-xs text-gray-400 leading-relaxed">
-              CalBridge syncs events from a <span className="text-red-400">source</span> calendar to a <span className="text-red-400">destination</span> calendar.
+              CalBridgeSync syncs events from a <span className="text-red-400">source</span> calendar to a <span className="text-red-400">destination</span> calendar.
               You'll need CalDAV credentials for both servers.
             </p>
           </div>
@@ -353,7 +353,7 @@ export default function SourceAdd() {
           <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
             <h3 className="text-sm font-semibold text-white mb-2">Sync Settings</h3>
             <div className="space-y-2 text-xs text-gray-400">
-              <p><span className="text-white">Interval:</span> How often CalBridge checks for new events.</p>
+              <p><span className="text-white">Interval:</span> How often CalBridgeSync checks for new events.</p>
               <p><span className="text-white">Conflicts:</span> What happens when the same event is modified on both servers:</p>
               <ul className="ml-3 mt-1 space-y-1">
                 <li><span className="text-red-400">Source wins</span> - Source changes override destination</li>

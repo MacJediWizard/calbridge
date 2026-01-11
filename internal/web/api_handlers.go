@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/macjediwizard/calbridge/internal/auth"
-	"github.com/macjediwizard/calbridge/internal/db"
+	"github.com/macjediwizard/calbridgesync/internal/auth"
+	"github.com/macjediwizard/calbridgesync/internal/db"
 )
 
 // APISource represents a source in JSON format for the API.

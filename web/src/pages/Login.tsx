@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const LOGO_URL = 'https://cdn.macjediwizard.com/cdn/CalBridge%20Images/calbridge-06070e03.png';
+const LOGO_URL = 'https://cdn.macjediwizard.com/cdn/CalBridgeSync%20Images/calbridge-06070e03.png';
 
 export default function Login() {
   const [logoError, setLogoError] = useState(false);
@@ -17,7 +17,7 @@ export default function Login() {
           {!logoError && (
             <img
               src={LOGO_URL}
-              alt="CalBridge Logo"
+              alt="CalBridgeSync Logo"
               className="w-32 h-32 mx-auto mb-6 object-contain"
               onError={() => setLogoError(true)}
             />
@@ -28,7 +28,7 @@ export default function Login() {
             </div>
           )}
           <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
-            CalBridge
+            CalBridgeSync
           </h1>
           <p className="mt-2 text-gray-400">CalDAV Calendar Synchronization</p>
         </div>

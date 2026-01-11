@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/macjediwizard/calbridge/internal/crypto"
-	"github.com/macjediwizard/calbridge/internal/db"
+	"github.com/macjediwizard/calbridgesync/internal/crypto"
+	"github.com/macjediwizard/calbridgesync/internal/db"
 )
 
 // SyncResult represents the result of a sync operation.

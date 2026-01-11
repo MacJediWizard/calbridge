@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/macjediwizard/calbridge/internal/auth"
-	"github.com/macjediwizard/calbridge/internal/caldav"
-	"github.com/macjediwizard/calbridge/internal/config"
-	"github.com/macjediwizard/calbridge/internal/crypto"
-	"github.com/macjediwizard/calbridge/internal/db"
-	"github.com/macjediwizard/calbridge/internal/health"
-	"github.com/macjediwizard/calbridge/internal/scheduler"
+	"github.com/macjediwizard/calbridgesync/internal/auth"
+	"github.com/macjediwizard/calbridgesync/internal/caldav"
+	"github.com/macjediwizard/calbridgesync/internal/config"
+	"github.com/macjediwizard/calbridgesync/internal/crypto"
+	"github.com/macjediwizard/calbridgesync/internal/db"
+	"github.com/macjediwizard/calbridgesync/internal/health"
+	"github.com/macjediwizard/calbridgesync/internal/scheduler"
 )
 
 // Handlers contains all HTTP handlers and their dependencies.
@@ -79,7 +79,7 @@ func (h *Handlers) Readiness(c *gin.Context) {
 // LoginPage renders the login page.
 func (h *Handlers) LoginPage(c *gin.Context) {
 	c.HTML(http.StatusOK, "login.html", gin.H{
-		"title": "Sign In - CalBridge",
+		"title": "Sign In - CalBridgeSync",
 	})
 }
 
@@ -204,7 +204,7 @@ func (h *Handlers) Dashboard(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "dashboard.html", gin.H{
-		"title":     "Dashboard - CalBridge",
+		"title":     "Dashboard - CalBridgeSync",
 		"user":      session,
 		"sources":   sources,
 		"csrfToken": session.CSRFToken,
@@ -236,7 +236,7 @@ func (h *Handlers) ListSources(c *gin.Context) {
 func (h *Handlers) AddSourcePage(c *gin.Context) {
 	session := auth.GetCurrentUser(c)
 	c.HTML(http.StatusOK, "sources/add.html", gin.H{
-		"title":       "Add Source - CalBridge",
+		"title":       "Add Source - CalBridgeSync",
 		"user":        session,
 		"csrfToken":   session.CSRFToken,
 		"presets":     db.SourcePresets,
@@ -389,7 +389,7 @@ func (h *Handlers) EditSourcePage(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "sources/edit.html", gin.H{
-		"title":       "Edit Source - CalBridge",
+		"title":       "Edit Source - CalBridgeSync",
 		"user":        session,
 		"source":      source,
 		"csrfToken":   session.CSRFToken,

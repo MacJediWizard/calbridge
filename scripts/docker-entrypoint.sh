@@ -12,7 +12,7 @@ check_required_env() {
     fi
 }
 
-echo "CalBridge starting..."
+echo "CalBridgeSync starting..."
 
 # Check required environment variables
 check_required_env "BASE_URL"
@@ -48,7 +48,7 @@ if [ ! -w "/app/data" ]; then
 fi
 
 echo "Environment validation complete"
-echo "Starting CalBridge on port ${PORT:-8080}..."
+echo "Starting CalBridgeSync on port ${PORT:-8080}..."
 
 # Execute the main command
 exec "$@"

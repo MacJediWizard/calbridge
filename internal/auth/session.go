@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	sessionName     = "calbridge_session"
-	oauthStateName  = "calbridge_oauth_state"
+	sessionName     = "calbridgesync_session"
+	oauthStateName  = "calbridgesync_oauth_state"
 	sessionMaxAge   = 7 * 24 * 60 * 60 // 7 days in seconds
 	csrfTokenLength = 32
 )

@@ -58,8 +58,8 @@ func TestRenderLoginTemplate(t *testing.T) {
 	}
 
 	// Check that the content is included
-	if !strings.Contains(html, "CalBridge") {
-		t.Error("Expected 'CalBridge' in output")
+	if !strings.Contains(html, "CalBridgeSync") {
+		t.Error("Expected 'CalBridgeSync' in output")
 	}
 
 	if !strings.Contains(html, "Sign in with SSO") {

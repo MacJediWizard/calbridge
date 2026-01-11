@@ -29,8 +29,8 @@ COPY . .
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -ldflags="-w -s -X main.Version=$(git describe --tags --always --dirty 2>/dev/null || echo 'dev')" \
-    -o /app/calbridge \
-    ./cmd/calbridge
+    -o /app/calbridgesync \
+    ./cmd/calbridgesync
 
 # Final stage
 FROM alpine:3.19
@@ -39,13 +39,13 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata
 
 # Create non-root user
-RUN addgroup -g 1000 calbridge && \
-    adduser -u 1000 -G calbridge -s /bin/sh -D calbridge
+RUN addgroup -g 1000 calbridgesync && \
+    adduser -u 1000 -G calbridgesync -s /bin/sh -D calbridgesync
 
 WORKDIR /app
 
 # Copy binary from builder
-COPY --from=builder /app/calbridge /app/calbridge
+COPY --from=builder /app/calbridgesync /app/calbridgesync
 
 # Copy React frontend build from frontend-builder
 COPY --from=frontend-builder /app/web/dist /app/web/dist
@@ -55,10 +55,10 @@ COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
 
 # Create data directory
-RUN mkdir -p /app/data && chown -R calbridge:calbridge /app
+RUN mkdir -p /app/data && chown -R calbridgesync:calbridgesync /app
 
 # Switch to non-root user
-USER calbridge
+USER calbridgesync
 
 # Expose port
 EXPOSE 8080
@@ -69,4 +69,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 # Set entrypoint
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["/app/calbridge"]
+CMD ["/app/calbridgesync"]

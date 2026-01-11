@@ -1,4 +1,4 @@
-# CalBridge
+# CalBridgeSync
 
 A production-ready Go application for bidirectional CalDAV calendar synchronization with OIDC authentication.
 
@@ -28,14 +28,14 @@ Create a `.env` file based on `.env.example`:
 ```bash
 # Server
 PORT=8080
-BASE_URL=https://calbridge.example.com
+BASE_URL=https://calbridgesync.example.com
 ENVIRONMENT=production
 
 # OIDC Authentication
 OIDC_ISSUER=https://auth.example.com/realms/main
-OIDC_CLIENT_ID=calbridge
+OIDC_CLIENT_ID=calbridgesync
 OIDC_CLIENT_SECRET=your-client-secret
-OIDC_REDIRECT_URL=https://calbridge.example.com/auth/callback
+OIDC_REDIRECT_URL=https://calbridgesync.example.com/auth/callback
 
 # Security (generate with: openssl rand -hex 32)
 ENCRYPTION_KEY=your-64-character-hex-encryption-key
@@ -45,7 +45,7 @@ SESSION_SECRET=your-session-secret-min-32-chars
 DEFAULT_DEST_URL=https://caldav.example.com/calendars/
 
 # Database
-DATABASE_PATH=./data/calbridge.db
+DATABASE_PATH=./data/calbridgesync.db
 
 # Rate Limiting
 RATE_LIMIT_RPS=10
@@ -63,7 +63,7 @@ MAX_SYNC_INTERVAL=3600
 docker-compose up -d
 
 # View logs
-docker-compose logs -f calbridge
+docker-compose logs -f calbridgesync
 ```
 
 ### Running Locally
@@ -73,11 +73,11 @@ docker-compose logs -f calbridge
 go mod download
 
 # Run the application
-go run ./cmd/calbridge
+go run ./cmd/calbridgesync
 
 # Or build and run
-go build -o calbridge ./cmd/calbridge
-./calbridge
+go build -o calbridgesync ./cmd/calbridgesync
+./calbridgesync
 ```
 
 ## API Endpoints
@@ -159,8 +159,8 @@ openssl rand -hex 32
 ## Architecture
 
 ```
-calbridge/
-├── cmd/calbridge/         # Main entry point
+calbridgesync/
+├── cmd/calbridgesync/         # Main entry point
 ├── internal/
 │   ├── auth/              # OIDC + session management
 │   ├── caldav/            # CalDAV client + sync engine

@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/macjediwizard/calbridge/internal/auth"
-	"github.com/macjediwizard/calbridge/internal/caldav"
-	"github.com/macjediwizard/calbridge/internal/config"
-	"github.com/macjediwizard/calbridge/internal/crypto"
-	"github.com/macjediwizard/calbridge/internal/db"
-	"github.com/macjediwizard/calbridge/internal/health"
-	"github.com/macjediwizard/calbridge/internal/scheduler"
-	"github.com/macjediwizard/calbridge/internal/web"
+	"github.com/macjediwizard/calbridgesync/internal/auth"
+	"github.com/macjediwizard/calbridgesync/internal/caldav"
+	"github.com/macjediwizard/calbridgesync/internal/config"
+	"github.com/macjediwizard/calbridgesync/internal/crypto"
+	"github.com/macjediwizard/calbridgesync/internal/db"
+	"github.com/macjediwizard/calbridgesync/internal/health"
+	"github.com/macjediwizard/calbridgesync/internal/scheduler"
+	"github.com/macjediwizard/calbridgesync/internal/web"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("Starting CalBridge...")
+	log.Println("Starting CalBridgeSync...")
 
 	// Load configuration
 	cfg, err := config.Load()

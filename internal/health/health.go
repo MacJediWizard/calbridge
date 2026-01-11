@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/macjediwizard/calbridge/internal/db"
+	"github.com/macjediwizard/calbridgesync/internal/db"
 )
 
 // Status represents the health status of a component.

@@ -1,4 +1,4 @@
-module github.com/macjediwizard/calbridge
+module github.com/macjediwizard/calbridgesync
 
 go 1.24.0
 
