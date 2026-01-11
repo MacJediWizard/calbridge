@@ -8,25 +8,27 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Roboto:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'mjw-black': '#000000',
-                        'mjw-dark': '#0a0a0a',
-                        'mjw-gray': '#1a1a1a',
-                        'mjw-light': '#2a2a2a',
-                        'mjw-accent': '#00d4ff',
-                        'mjw-accent-dark': '#00a3cc',
-                        'mjw-success': '#00ff88',
-                        'mjw-error': '#ff4444',
-                        'mjw-warning': '#ffaa00',
+                        'primary': '#6366f1',
+                        'primary-dark': '#4f46e5',
+                        'primary-light': '#818cf8',
+                        'accent': '#06b6d4',
+                        'success': '#10b981',
+                        'warning': '#f59e0b',
+                        'error': '#ef4444',
+                        'surface': 'rgba(255, 255, 255, 0.05)',
+                        'surface-hover': 'rgba(255, 255, 255, 0.1)',
                     },
                     fontFamily: {
-                        'orbitron': ['Orbitron', 'monospace'],
-                        'roboto': ['Roboto', 'sans-serif'],
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    backdropBlur: {
+                        'xl': '24px',
                     }
                 }
             }
@@ -34,61 +36,135 @@
     </script>
     <style>
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #000000;
-            color: #ffffff;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 25%, #16213e 50%, #1a1a2e 75%, #0f0f23 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
         }
-        h1, h2, h3, .font-heading {
-            font-family: 'Orbitron', monospace;
+
+        /* Animated gradient orbs in background */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
         }
-        .htmx-indicator {
-            display: none;
+        .bg-orb-1 {
+            width: 600px;
+            height: 600px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            top: -200px;
+            right: -100px;
+            animation: float 20s ease-in-out infinite;
         }
-        .htmx-request .htmx-indicator {
-            display: inline;
+        .bg-orb-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #06b6d4, #0891b2);
+            bottom: -100px;
+            left: -100px;
+            animation: float 25s ease-in-out infinite reverse;
         }
-        .htmx-request.htmx-indicator {
-            display: inline;
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(5deg); }
+            66% { transform: translate(-20px, 20px) rotate(-5deg); }
         }
-        .glow {
-            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+
+        /* Glass card effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .glow-text {
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        .glass-hover:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.15);
         }
+
+        /* Input styling */
         input, select, textarea {
-            background-color: #1a1a1a !important;
-            border-color: #2a2a2a !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
             color: #ffffff !important;
+            transition: all 0.2s ease;
         }
         input:focus, select:focus, textarea:focus {
-            border-color: #00d4ff !important;
-            box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2) !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+            outline: none !important;
         }
         input::placeholder {
-            color: #666666 !important;
+            color: rgba(255, 255, 255, 0.4) !important;
         }
+
+        /* Select dropdown fix */
+        select option {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        /* Button glow effect */
+        .btn-glow {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+        }
+
+        /* HTMX loading states */
+        .htmx-indicator { display: none; }
+        .htmx-request .htmx-indicator { display: inline; }
+        .htmx-request.htmx-indicator { display: inline; }
+
+        /* Smooth scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
     </style>
 </head>
-<body class="bg-mjw-black min-h-screen font-roboto">
-    <nav class="bg-mjw-dark border-b border-mjw-light">
+<body class="text-white antialiased">
+    <!-- Background orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+
+    <!-- Navigation -->
+    <nav class="relative z-10 glass border-b border-white/5">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
-                    <a href="/" class="text-xl font-orbitron font-bold text-mjw-accent glow-text">CalBridge</a>
+                    <a href="/" class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <span class="text-xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">CalBridge</span>
+                    </a>
                     {{if .User}}
-                    <div class="ml-10 flex items-baseline space-x-4">
-                        <a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-mjw-accent hover:bg-mjw-gray transition-all {{if eq .ActiveNav "dashboard"}}text-mjw-accent bg-mjw-gray{{end}}">Dashboard</a>
-                        <a href="/sources" class="px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:text-mjw-accent hover:bg-mjw-gray transition-all {{if eq .ActiveNav "sources"}}text-mjw-accent bg-mjw-gray{{end}}">Sources</a>
+                    <div class="hidden md:flex ml-10 items-center space-x-1">
+                        <a href="/" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{if eq .ActiveNav "dashboard"}}bg-white/10 text-white{{else}}text-gray-400 hover:text-white hover:bg-white/5{{end}}">
+                            Dashboard
+                        </a>
+                        <a href="/sources" class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 {{if eq .ActiveNav "sources"}}bg-white/10 text-white{{else}}text-gray-400 hover:text-white hover:bg-white/5{{end}}">
+                            Sources
+                        </a>
                     </div>
                     {{end}}
                 </div>
                 {{if .User}}
-                <div class="flex items-center">
-                    <span class="text-sm text-gray-400 mr-4">{{.User.Email}}</span>
+                <div class="flex items-center space-x-4">
+                    <span class="hidden sm:block text-sm text-gray-400">{{.User.Email}}</span>
                     <form action="/auth/logout" method="POST" class="inline">
                         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                        <button type="submit" class="px-4 py-2 rounded-md text-sm font-medium bg-mjw-gray text-gray-300 hover:bg-mjw-light hover:text-white transition-all border border-mjw-light">Logout</button>
+                        <button type="submit" class="px-4 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all duration-200">
+                            Logout
+                        </button>
                     </form>
                 </div>
                 {{end}}
@@ -96,17 +172,34 @@
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Main content -->
+    <main class="relative z-10 max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {{if .Flash}}
-        <div class="mb-6 p-4 rounded-lg border {{if eq .Flash.Type "error"}}bg-mjw-error/10 border-mjw-error/50 text-mjw-error{{else if eq .Flash.Type "success"}}bg-mjw-success/10 border-mjw-success/50 text-mjw-success{{else}}bg-mjw-accent/10 border-mjw-accent/50 text-mjw-accent{{end}}">
-            {{.Flash.Message}}
+        <div class="mb-6 p-4 rounded-xl glass {{if eq .Flash.Type "error"}}border-error/50 bg-error/10{{else if eq .Flash.Type "success"}}border-success/50 bg-success/10{{else}}border-primary/50 bg-primary/10{{end}}">
+            <div class="flex items-center">
+                {{if eq .Flash.Type "error"}}
+                <svg class="w-5 h-5 text-error mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{else if eq .Flash.Type "success"}}
+                <svg class="w-5 h-5 text-success mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{else}}
+                <svg class="w-5 h-5 text-primary mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {{end}}
+                <span class="{{if eq .Flash.Type "error"}}text-error{{else if eq .Flash.Type "success"}}text-success{{else}}text-primary{{end}}">{{.Flash.Message}}</span>
+            </div>
         </div>
         {{end}}
 
         {{template "content" .}}
     </main>
 
-    <footer class="bg-mjw-dark border-t border-mjw-light py-6 mt-auto">
+    <!-- Footer -->
+    <footer class="relative z-10 glass border-t border-white/5 py-6 mt-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <p class="text-gray-500 text-sm">CalBridge - CalDAV Synchronization</p>
             <p class="text-gray-600 text-xs mt-1">Powered by MacJediWizard Digital Wizardry</p>

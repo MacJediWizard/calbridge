@@ -1,46 +1,55 @@
 {{define "content"}}
 <div class="space-y-8">
+    <!-- Header -->
     <div>
-        <h1 class="text-3xl font-orbitron font-bold text-white glow-text">Add Calendar Source</h1>
-        <p class="mt-2 text-gray-400">Configure a new calendar synchronization source.</p>
+        <h1 class="text-3xl font-bold text-white">Add Calendar Source</h1>
+        <p class="mt-1 text-gray-400">Configure a new calendar synchronization source</p>
     </div>
 
-    <div class="bg-mjw-dark rounded-xl border border-mjw-light overflow-hidden">
-        <form action="/sources/add" method="POST" class="p-6 space-y-8">
+    <!-- Form Card -->
+    <div class="glass rounded-2xl">
+        <form action="/sources/add" method="POST" class="p-6 sm:p-8 space-y-8">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
 
             {{if .Error}}
-            <div class="bg-mjw-error/10 border border-mjw-error/50 text-mjw-error px-4 py-3 rounded-lg" role="alert">
-                {{.Error}}
+            <div class="p-4 rounded-xl bg-error/10 border border-error/20">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-error mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-error">{{.Error}}</span>
+                </div>
             </div>
             {{end}}
 
             <!-- General Settings -->
-            <div class="border-b border-mjw-light pb-8">
-                <h3 class="text-lg font-orbitron font-semibold text-mjw-accent">General Settings</h3>
-                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
-                    <div class="sm:col-span-4">
-                        <label for="name" class="block text-sm font-medium text-gray-300">Name</label>
-                        <input type="text" name="name" id="name" value="{{.Form.Name}}" required
-                            placeholder="My Calendar Sync"
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
-                        <p class="mt-2 text-sm text-gray-500">A friendly name for this sync source.</p>
+            <div class="space-y-6">
+                <div class="flex items-center space-x-3 pb-2 border-b border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+                        <svg class="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="source_type" class="block text-sm font-medium text-gray-300">Source Type</label>
-                        <select name="source_type" id="source_type" required
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <h3 class="text-lg font-semibold text-white">General Settings</h3>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:col-span-2">
+                        <label for="name" class="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                        <input type="text" name="name" id="name" value="{{.Form.Name}}" required placeholder="My Calendar Sync" class="w-full rounded-xl py-3 px-4">
+                        <p class="mt-2 text-sm text-gray-500">A friendly name for this sync source</p>
+                    </div>
+                    <div>
+                        <label for="source_type" class="block text-sm font-medium text-gray-300 mb-2">Source Type</label>
+                        <select name="source_type" id="source_type" required class="w-full rounded-xl py-3 px-4">
                             <option value="caldav" {{if eq .Form.SourceType "caldav"}}selected{{end}}>CalDAV</option>
                             <option value="google" {{if eq .Form.SourceType "google"}}selected{{end}}>Google Calendar</option>
                             <option value="outlook" {{if eq .Form.SourceType "outlook"}}selected{{end}}>Outlook</option>
                         </select>
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="sync_interval" class="block text-sm font-medium text-gray-300">Sync Interval</label>
-                        <select name="sync_interval" id="sync_interval" required
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <div>
+                        <label for="sync_interval" class="block text-sm font-medium text-gray-300 mb-2">Sync Interval</label>
+                        <select name="sync_interval" id="sync_interval" required class="w-full rounded-xl py-3 px-4">
                             <option value="300" {{if eq .Form.SyncInterval 300}}selected{{end}}>5 minutes</option>
                             <option value="900" {{if eq .Form.SyncInterval 900}}selected{{end}}>15 minutes</option>
                             <option value="1800" {{if eq .Form.SyncInterval 1800}}selected{{end}}>30 minutes</option>
@@ -50,93 +59,82 @@
                             <option value="86400" {{if eq .Form.SyncInterval 86400}}selected{{end}}>24 hours</option>
                         </select>
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="conflict_strategy" class="block text-sm font-medium text-gray-300">Conflict Strategy</label>
-                        <select name="conflict_strategy" id="conflict_strategy" required
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <div>
+                        <label for="conflict_strategy" class="block text-sm font-medium text-gray-300 mb-2">Conflict Strategy</label>
+                        <select name="conflict_strategy" id="conflict_strategy" required class="w-full rounded-xl py-3 px-4">
                             <option value="source_wins" {{if eq .Form.ConflictStrategy "source_wins"}}selected{{end}}>Source Wins</option>
                             <option value="dest_wins" {{if eq .Form.ConflictStrategy "dest_wins"}}selected{{end}}>Destination Wins</option>
                             <option value="newest_wins" {{if eq .Form.ConflictStrategy "newest_wins"}}selected{{end}}>Newest Wins</option>
                         </select>
-                        <p class="mt-2 text-sm text-gray-500">How to handle conflicts when events differ.</p>
+                        <p class="mt-2 text-sm text-gray-500">How to handle conflicts</p>
                     </div>
                 </div>
             </div>
 
             <!-- Source Server -->
-            <div class="border-b border-mjw-light pb-8">
-                <h3 class="text-lg font-orbitron font-semibold text-mjw-accent">Source Server</h3>
-                <p class="mt-1 text-sm text-gray-500">The CalDAV server to sync events from.</p>
-                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
-                    <div class="sm:col-span-6">
-                        <label for="source_url" class="block text-sm font-medium text-gray-300">CalDAV URL</label>
-                        <input type="url" name="source_url" id="source_url" value="{{.Form.SourceURL}}" required
-                            placeholder="https://caldav.example.com/calendars/user/"
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+            <div class="space-y-6">
+                <div class="flex items-center space-x-3 pb-2 border-b border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center border border-accent/20">
+                        <svg class="w-4 h-4 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                        </svg>
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="source_username" class="block text-sm font-medium text-gray-300">Username</label>
-                        <input type="text" name="source_username" id="source_username" value="{{.Form.SourceUsername}}" required
-                            placeholder="user@example.com"
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <h3 class="text-lg font-semibold text-white">Source Server</h3>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:col-span-2">
+                        <label for="source_url" class="block text-sm font-medium text-gray-300 mb-2">CalDAV URL</label>
+                        <input type="url" name="source_url" id="source_url" value="{{.Form.SourceURL}}" required placeholder="https://caldav.example.com/calendars/user/" class="w-full rounded-xl py-3 px-4">
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="source_password" class="block text-sm font-medium text-gray-300">Password</label>
-                        <input type="password" name="source_password" id="source_password" required
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <div>
+                        <label for="source_username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                        <input type="text" name="source_username" id="source_username" value="{{.Form.SourceUsername}}" required placeholder="user@example.com" class="w-full rounded-xl py-3 px-4">
+                    </div>
+                    <div>
+                        <label for="source_password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" name="source_password" id="source_password" required class="w-full rounded-xl py-3 px-4">
                         <p class="mt-2 text-sm text-gray-500 flex items-center">
-                            <svg class="h-4 w-4 mr-1 text-mjw-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                            Stored encrypted with AES-256-GCM
+                            <svg class="w-4 h-4 mr-1 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            Encrypted with AES-256-GCM
                         </p>
                     </div>
                 </div>
             </div>
 
             <!-- Destination Server -->
-            <div class="pb-4">
-                <h3 class="text-lg font-orbitron font-semibold text-mjw-accent">Destination Server</h3>
-                <p class="mt-1 text-sm text-gray-500">The CalDAV server to sync events to.</p>
-                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
-                    <div class="sm:col-span-6">
-                        <label for="dest_url" class="block text-sm font-medium text-gray-300">CalDAV URL</label>
-                        <input type="url" name="dest_url" id="dest_url" value="{{.Form.DestURL}}" required
-                            placeholder="https://caldav.example.com/calendars/user/"
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+            <div class="space-y-6">
+                <div class="flex items-center space-x-3 pb-2 border-b border-white/5">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-success/20 to-success/5 flex items-center justify-center border border-success/20">
+                        <svg class="w-4 h-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                        </svg>
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="dest_username" class="block text-sm font-medium text-gray-300">Username</label>
-                        <input type="text" name="dest_username" id="dest_username" value="{{.Form.DestUsername}}" required
-                            placeholder="user@example.com"
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <h3 class="text-lg font-semibold text-white">Destination Server</h3>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div class="sm:col-span-2">
+                        <label for="dest_url" class="block text-sm font-medium text-gray-300 mb-2">CalDAV URL</label>
+                        <input type="url" name="dest_url" id="dest_url" value="{{.Form.DestURL}}" required placeholder="https://caldav.example.com/calendars/user/" class="w-full rounded-xl py-3 px-4">
                     </div>
-
-                    <div class="sm:col-span-3">
-                        <label for="dest_password" class="block text-sm font-medium text-gray-300">Password</label>
-                        <input type="password" name="dest_password" id="dest_password" required
-                            class="mt-2 block w-full rounded-lg py-3 px-4 text-sm focus:ring-2 focus:ring-mjw-accent">
+                    <div>
+                        <label for="dest_username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                        <input type="text" name="dest_username" id="dest_username" value="{{.Form.DestUsername}}" required placeholder="user@example.com" class="w-full rounded-xl py-3 px-4">
+                    </div>
+                    <div>
+                        <label for="dest_password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" name="dest_password" id="dest_password" required class="w-full rounded-xl py-3 px-4">
                         <p class="mt-2 text-sm text-gray-500 flex items-center">
-                            <svg class="h-4 w-4 mr-1 text-mjw-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                            Stored encrypted with AES-256-GCM
+                            <svg class="w-4 h-4 mr-1 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                            Encrypted with AES-256-GCM
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div class="flex justify-end space-x-4 pt-6 border-t border-mjw-light">
-                <a href="/sources" class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-300 bg-mjw-gray border border-mjw-light hover:bg-mjw-light hover:text-white transition-all">
-                    Cancel
-                </a>
-                <button type="submit" class="px-5 py-2.5 border border-mjw-accent text-sm font-orbitron font-semibold rounded-lg text-mjw-black bg-mjw-accent hover:bg-mjw-accent-dark hover:shadow-lg hover:shadow-mjw-accent/30 transition-all duration-300 glow">
-                    Add Source
-                </button>
+            <!-- Actions -->
+            <div class="flex justify-end space-x-4 pt-6 border-t border-white/5">
+                <a href="/sources" class="px-5 py-2.5 rounded-xl text-gray-400 font-medium hover:text-white hover:bg-white/5 transition-all">Cancel</a>
+                <button type="submit" class="px-5 py-2.5 rounded-xl text-white font-medium bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary transition-all duration-300 btn-glow">Add Source</button>
             </div>
         </form>
     </div>

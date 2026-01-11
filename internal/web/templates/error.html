@@ -1,33 +1,24 @@
 {{define "content"}}
 <div class="min-h-[70vh] flex items-center justify-center py-12 px-4">
     <div class="max-w-md w-full text-center">
-        <div class="mx-auto h-24 w-24 flex items-center justify-center rounded-xl bg-mjw-error/10 border border-mjw-error/30">
-            <svg class="h-12 w-12 text-mjw-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-error/20 to-error/5 border border-error/20 mb-6">
+            <svg class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
         </div>
 
-        <h1 class="mt-6 text-5xl font-orbitron font-bold text-mjw-error">
-            {{if .Code}}{{.Code}}{{else}}Error{{end}}
-        </h1>
-
-        <p class="mt-4 text-lg text-gray-400">
-            {{if .Message}}{{.Message}}{{else}}An unexpected error occurred.{{end}}
-        </p>
+        <h1 class="text-5xl font-bold text-error">{{if .Code}}{{.Code}}{{else}}Error{{end}}</h1>
+        <p class="mt-4 text-lg text-gray-400">{{if .Message}}{{.Message}}{{else}}An unexpected error occurred.{{end}}</p>
 
         {{if .Details}}
-        <div class="mt-6 text-left bg-mjw-dark rounded-xl p-4 border border-mjw-light">
+        <div class="mt-6 text-left glass rounded-xl p-4">
             <pre class="text-sm text-gray-300 overflow-x-auto">{{.Details}}</pre>
         </div>
         {{end}}
 
         <div class="mt-8 flex justify-center space-x-4">
-            <a href="/" class="px-5 py-2.5 border border-mjw-accent text-sm font-orbitron font-semibold rounded-lg text-mjw-black bg-mjw-accent hover:bg-mjw-accent-dark hover:shadow-lg hover:shadow-mjw-accent/30 transition-all duration-300 glow">
-                Go to Dashboard
-            </a>
-            <button onclick="history.back()" class="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-300 bg-mjw-gray border border-mjw-light hover:bg-mjw-light hover:text-white transition-all">
-                Go Back
-            </button>
+            <a href="/" class="px-5 py-2.5 rounded-xl text-white font-medium bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary transition-all duration-300 btn-glow">Go to Dashboard</a>
+            <button onclick="history.back()" class="px-5 py-2.5 rounded-xl text-gray-400 font-medium hover:text-white hover:bg-white/5 transition-all">Go Back</button>
         </div>
     </div>
 </div>

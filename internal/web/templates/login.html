@@ -1,73 +1,92 @@
 {{define "content"}}
-<div class="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-    <div class="max-w-md w-full space-y-8">
-        <div class="text-center">
-            <h1 class="text-5xl font-orbitron font-bold text-mjw-accent glow-text">CalBridge</h1>
-            <h2 class="mt-4 text-2xl font-orbitron text-white">CalDAV Synchronization</h2>
-            <p class="mt-3 text-gray-400">
-                Sync your calendars across multiple CalDAV servers
-            </p>
+<div class="min-h-[85vh] flex items-center justify-center py-12 px-4">
+    <div class="max-w-md w-full">
+        <!-- Logo and Title -->
+        <div class="text-center mb-10">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary via-primary-light to-accent mb-6 shadow-lg shadow-primary/30">
+                <svg class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">CalBridge</h1>
+            <p class="mt-3 text-lg text-gray-400">CalDAV Calendar Synchronization</p>
         </div>
 
         {{if .Error}}
-        <div class="bg-mjw-error/10 border border-mjw-error/50 text-mjw-error px-4 py-3 rounded-lg" role="alert">
-            <span class="block sm:inline">{{.Error}}</span>
+        <div class="mb-6 p-4 rounded-xl glass border-error/50 bg-error/10">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-error mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-error">{{.Error}}</span>
+            </div>
         </div>
         {{end}}
 
-        <div class="mt-8">
+        <!-- Login Card -->
+        <div class="glass rounded-2xl p-8">
             <form action="/auth/login" method="POST">
                 <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-                <button type="submit" class="group relative w-full flex justify-center py-4 px-6 border border-mjw-accent text-lg font-orbitron font-semibold rounded-lg text-mjw-black bg-mjw-accent hover:bg-mjw-accent-dark hover:shadow-lg hover:shadow-mjw-accent/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mjw-accent focus:ring-offset-mjw-black transition-all duration-300 glow">
+                <button type="submit" class="w-full flex items-center justify-center py-4 px-6 rounded-xl text-white font-semibold bg-gradient-to-r from-primary to-primary-dark hover:from-primary-dark hover:to-primary transition-all duration-300 btn-glow">
+                    <svg class="w-5 h-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
                     Sign in with SSO
                 </button>
             </form>
         </div>
 
-        <div class="mt-10">
-            <div class="relative">
-                <div class="absolute inset-0 flex items-center">
-                    <div class="w-full border-t border-mjw-light"></div>
-                </div>
-                <div class="relative flex justify-center">
-                    <span class="px-4 bg-mjw-black text-gray-500 font-orbitron text-sm">Features</span>
-                </div>
+        <!-- Features Section -->
+        <div class="mt-12">
+            <div class="flex items-center justify-center mb-8">
+                <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                <span class="px-4 text-sm font-medium text-gray-500">Why CalBridge?</span>
+                <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
             </div>
 
-            <div class="mt-8 grid grid-cols-1 gap-4">
-                <div class="flex items-center p-5 bg-mjw-dark rounded-xl border border-mjw-light hover:border-mjw-accent/50 transition-all">
-                    <div class="flex-shrink-0 h-12 w-12 bg-mjw-accent/10 rounded-lg flex items-center justify-center border border-mjw-accent/30">
-                        <svg class="h-6 w-6 text-mjw-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-semibold text-white">Multi-Calendar Sync</p>
-                        <p class="text-sm text-gray-400">Sync between any CalDAV servers</p>
-                    </div>
-                </div>
-
-                <div class="flex items-center p-5 bg-mjw-dark rounded-xl border border-mjw-light hover:border-mjw-success/50 transition-all">
-                    <div class="flex-shrink-0 h-12 w-12 bg-mjw-success/10 rounded-lg flex items-center justify-center border border-mjw-success/30">
-                        <svg class="h-6 w-6 text-mjw-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                    </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-semibold text-white">Secure Credentials</p>
-                        <p class="text-sm text-gray-400">AES-256-GCM encryption at rest</p>
+            <div class="grid grid-cols-1 gap-4">
+                <!-- Feature 1 -->
+                <div class="glass glass-hover rounded-xl p-5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 group-hover:border-primary/40 transition-colors">
+                            <svg class="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-sm font-semibold text-white">Multi-Calendar Sync</h3>
+                            <p class="text-sm text-gray-400">Sync between any CalDAV servers seamlessly</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex items-center p-5 bg-mjw-dark rounded-xl border border-mjw-light hover:border-mjw-warning/50 transition-all">
-                    <div class="flex-shrink-0 h-12 w-12 bg-mjw-warning/10 rounded-lg flex items-center justify-center border border-mjw-warning/30">
-                        <svg class="h-6 w-6 text-mjw-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
+                <!-- Feature 2 -->
+                <div class="glass glass-hover rounded-xl p-5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-success/20 to-success/5 flex items-center justify-center border border-success/20 group-hover:border-success/40 transition-colors">
+                            <svg class="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-sm font-semibold text-white">Secure Credentials</h3>
+                            <p class="text-sm text-gray-400">AES-256-GCM encryption at rest</p>
+                        </div>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-semibold text-white">Automatic Sync</p>
-                        <p class="text-sm text-gray-400">Configurable sync intervals</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="glass glass-hover rounded-xl p-5 transition-all duration-300 group">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center border border-accent/20 group-hover:border-accent/40 transition-colors">
+                            <svg class="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-sm font-semibold text-white">Automatic Sync</h3>
+                            <p class="text-sm text-gray-400">Configurable sync intervals from 5 min to 24 hours</p>
+                        </div>
                     </div>
                 </div>
             </div>
