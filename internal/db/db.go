@@ -192,6 +192,9 @@ func (db *DB) migrate() error {
 
 		// Index on source_id for malformed_events
 		`CREATE INDEX IF NOT EXISTS idx_malformed_events_source_id ON malformed_events(source_id)`,
+
+		// Migration: Add selected_calendars column to sources (JSON array of calendar paths)
+		`ALTER TABLE sources ADD COLUMN selected_calendars TEXT`,
 	}
 
 	for _, migration := range migrations {

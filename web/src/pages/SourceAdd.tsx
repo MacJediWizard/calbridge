@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { createSource } from '../services/api';
-import type { SourceFormData } from '../types';
+import { createSource, discoverCalendars } from '../services/api';
+import type { SourceFormData, Calendar } from '../types';
 
 export default function SourceAdd() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
   const [form, setForm] = useState<SourceFormData>({
     name: '',
     source_type: 'caldav',
@@ -19,7 +22,45 @@ export default function SourceAdd() {
     sync_interval: 3600,
     sync_direction: 'one_way',
     conflict_strategy: 'source_wins',
+    selected_calendars: [],
   });
+
+  const handleDiscoverCalendars = async () => {
+    if (!form.source_url || !form.source_username || !form.source_password) {
+      setDiscoverError('Please fill in source URL, username and password first');
+      return;
+    }
+
+    setDiscovering(true);
+    setDiscoverError(null);
+    try {
+      const discovered = await discoverCalendars(form.source_url, form.source_username, form.source_password);
+      setCalendars(discovered);
+      // By default, select all calendars
+      setForm(prev => ({ ...prev, selected_calendars: discovered.map(c => c.path) }));
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        setDiscoverError(axiosErr.response?.data?.error || 'Failed to discover calendars');
+      } else {
+        setDiscoverError('Failed to discover calendars');
+      }
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleCalendarToggle = (path: string) => {
+    setForm(prev => {
+      const isSelected = prev.selected_calendars.includes(path);
+      return {
+        ...prev,
+        selected_calendars: isSelected
+          ? prev.selected_calendars.filter(p => p !== path)
+          : [...prev.selected_calendars, path]
+      };
+    });
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -185,6 +226,48 @@ export default function SourceAdd() {
                       className="w-full"
                     />
                   </div>
+                </div>
+
+                {/* Calendar Discovery */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleDiscoverCalendars}
+                    disabled={discovering || !form.source_url || !form.source_username || !form.source_password}
+                    className="px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {discovering ? 'Discovering...' : 'Discover Calendars'}
+                  </button>
+                  {discoverError && (
+                    <p className="mt-2 text-sm text-red-400">{discoverError}</p>
+                  )}
+                  {calendars.length > 0 && (
+                    <div className="mt-3 p-3 bg-black/50 rounded border border-zinc-700">
+                      <p className="text-xs text-gray-400 mb-2">Select calendars to sync:</p>
+                      <div className="space-y-2">
+                        {calendars.map((cal) => (
+                          <label key={cal.path} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.selected_calendars.includes(cal.path)}
+                              onChange={() => handleCalendarToggle(cal.path)}
+                              className="rounded border-zinc-600 bg-zinc-800 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-sm text-white">{cal.name || cal.path}</span>
+                            {cal.color && (
+                              <span
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: cal.color }}
+                              />
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {form.selected_calendars.length} of {calendars.length} selected
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { getSource, updateSource, deleteSource } from '../services/api';
-import type { Source } from '../types';
+import { getSource, updateSource, deleteSource, discoverCalendars } from '../services/api';
+import type { Source, Calendar } from '../types';
 
 export default function SourceEdit() {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +10,9 @@ export default function SourceEdit() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<Source | null>(null);
+  const [discovering, setDiscovering] = useState(false);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     source_type: 'caldav',
@@ -22,6 +25,7 @@ export default function SourceEdit() {
     sync_interval: 3600,
     sync_direction: 'one_way' as 'one_way' | 'two_way',
     conflict_strategy: 'source_wins',
+    selected_calendars: [] as string[],
   });
 
   useEffect(() => {
@@ -45,6 +49,7 @@ export default function SourceEdit() {
         sync_interval: data.sync_interval,
         sync_direction: data.sync_direction || 'one_way',
         conflict_strategy: data.conflict_strategy,
+        selected_calendars: data.selected_calendars || [],
       });
     } catch (err) {
       setError('Failed to load source');
@@ -52,6 +57,58 @@ export default function SourceEdit() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDiscoverCalendars = async () => {
+    if (!form.source_url || !form.source_username) {
+      setDiscoverError('Please fill in source URL and username');
+      return;
+    }
+
+    // For editing, we need to use the stored password if not changed
+    const password = form.source_password || 'USE_EXISTING';
+    if (password === 'USE_EXISTING' && !source) {
+      setDiscoverError('Please enter password to discover calendars');
+      return;
+    }
+
+    setDiscovering(true);
+    setDiscoverError(null);
+    try {
+      // If password is empty, we can't discover - need to inform user
+      if (!form.source_password) {
+        setDiscoverError('Please enter password to discover calendars');
+        setDiscovering(false);
+        return;
+      }
+      const discovered = await discoverCalendars(form.source_url, form.source_username, form.source_password);
+      setCalendars(discovered);
+      // If no calendars selected yet, select all by default
+      if (form.selected_calendars.length === 0) {
+        setForm(prev => ({ ...prev, selected_calendars: discovered.map(c => c.path) }));
+      }
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'response' in err) {
+        const axiosErr = err as { response?: { data?: { error?: string } } };
+        setDiscoverError(axiosErr.response?.data?.error || 'Failed to discover calendars');
+      } else {
+        setDiscoverError('Failed to discover calendars');
+      }
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const handleCalendarToggle = (path: string) => {
+    setForm(prev => {
+      const isSelected = prev.selected_calendars.includes(path);
+      return {
+        ...prev,
+        selected_calendars: isSelected
+          ? prev.selected_calendars.filter(p => p !== path)
+          : [...prev.selected_calendars, path]
+      };
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -217,6 +274,60 @@ export default function SourceEdit() {
                 </label>
                 <input type="password" name="source_password" id="source_password" value={form.source_password} onChange={handleChange} placeholder="Leave empty to keep" className="w-full" />
               </div>
+            </div>
+
+            {/* Calendar Selection */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-gray-400">
+                  {form.selected_calendars.length > 0
+                    ? `${form.selected_calendars.length} calendar(s) selected`
+                    : 'All calendars (no filter)'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDiscoverCalendars}
+                  disabled={discovering || !form.source_url || !form.source_username}
+                  className="px-3 py-1.5 rounded bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {discovering ? 'Discovering...' : 'Discover Calendars'}
+                </button>
+              </div>
+              {discoverError && (
+                <p className="text-sm text-red-400 mb-2">{discoverError}</p>
+              )}
+              {calendars.length > 0 && (
+                <div className="p-3 bg-black/50 rounded border border-zinc-700">
+                  <p className="text-xs text-gray-400 mb-2">Select calendars to sync:</p>
+                  <div className="space-y-2">
+                    {calendars.map((cal) => (
+                      <label key={cal.path} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={form.selected_calendars.includes(cal.path)}
+                          onChange={() => handleCalendarToggle(cal.path)}
+                          className="rounded border-zinc-600 bg-zinc-800 text-red-600 focus:ring-red-500"
+                        />
+                        <span className="text-sm text-white">{cal.name || cal.path}</span>
+                        {cal.color && (
+                          <span
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: cal.color }}
+                          />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {form.selected_calendars.length} of {calendars.length} selected
+                  </p>
+                </div>
+              )}
+              {form.selected_calendars.length > 0 && calendars.length === 0 && (
+                <div className="p-2 bg-zinc-800/50 rounded text-xs text-gray-400">
+                  Currently syncing {form.selected_calendars.length} calendar(s). Click "Discover Calendars" to modify selection.
+                </div>
+              )}
             </div>
           </div>
 

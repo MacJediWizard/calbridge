@@ -15,21 +15,29 @@ import (
 
 // APISource represents a source in JSON format for the API.
 type APISource struct {
-	ID               string `json:"id"`
-	Name             string `json:"name"`
-	SourceType       string `json:"source_type"`
-	SourceURL        string `json:"source_url"`
-	SourceUsername   string `json:"source_username"`
-	DestURL          string `json:"dest_url"`
-	DestUsername     string `json:"dest_username"`
-	SyncInterval     int    `json:"sync_interval"`
-	SyncDirection    string `json:"sync_direction"`
-	ConflictStrategy string `json:"conflict_strategy"`
-	Enabled          bool   `json:"enabled"`
-	SyncStatus       string `json:"sync_status"`
-	LastSyncAt       *string `json:"last_sync_at"`
-	CreatedAt        string `json:"created_at"`
-	UpdatedAt        string `json:"updated_at"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	SourceType        string   `json:"source_type"`
+	SourceURL         string   `json:"source_url"`
+	SourceUsername    string   `json:"source_username"`
+	DestURL           string   `json:"dest_url"`
+	DestUsername      string   `json:"dest_username"`
+	SyncInterval      int      `json:"sync_interval"`
+	SyncDirection     string   `json:"sync_direction"`
+	ConflictStrategy  string   `json:"conflict_strategy"`
+	SelectedCalendars []string `json:"selected_calendars"`
+	Enabled           bool     `json:"enabled"`
+	SyncStatus        string   `json:"sync_status"`
+	LastSyncAt        *string  `json:"last_sync_at"`
+	CreatedAt         string   `json:"created_at"`
+	UpdatedAt         string   `json:"updated_at"`
+}
+
+// APICalendar represents a calendar discovered on a CalDAV server.
+type APICalendar struct {
+	Name  string `json:"name"`
+	Path  string `json:"path"`
+	Color string `json:"color,omitempty"`
 }
 
 // APISyncLog represents a sync log in JSON format for the API.
@@ -101,24 +109,29 @@ type APIUser struct {
 // sourceToAPI converts a db.Source to APISource.
 func sourceToAPI(s *db.Source) *APISource {
 	api := &APISource{
-		ID:               s.ID,
-		Name:             s.Name,
-		SourceType:       string(s.SourceType),
-		SourceURL:        s.SourceURL,
-		SourceUsername:   s.SourceUsername,
-		DestURL:          s.DestURL,
-		DestUsername:     s.DestUsername,
-		SyncInterval:     s.SyncInterval,
-		SyncDirection:    string(s.SyncDirection),
-		ConflictStrategy: string(s.ConflictStrategy),
-		Enabled:          s.Enabled,
-		SyncStatus:       string(s.LastSyncStatus),
-		CreatedAt:        s.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:        s.UpdatedAt.Format(time.RFC3339),
+		ID:                s.ID,
+		Name:              s.Name,
+		SourceType:        string(s.SourceType),
+		SourceURL:         s.SourceURL,
+		SourceUsername:    s.SourceUsername,
+		DestURL:           s.DestURL,
+		DestUsername:      s.DestUsername,
+		SyncInterval:      s.SyncInterval,
+		SyncDirection:     string(s.SyncDirection),
+		ConflictStrategy:  string(s.ConflictStrategy),
+		SelectedCalendars: s.SelectedCalendars,
+		Enabled:           s.Enabled,
+		SyncStatus:        string(s.LastSyncStatus),
+		CreatedAt:         s.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:         s.UpdatedAt.Format(time.RFC3339),
 	}
 	if s.LastSyncAt != nil {
 		ts := s.LastSyncAt.Format(time.RFC3339)
 		api.LastSyncAt = &ts
+	}
+	// Ensure selected_calendars is never null in JSON
+	if api.SelectedCalendars == nil {
+		api.SelectedCalendars = []string{}
 	}
 	return api
 }
@@ -365,16 +378,18 @@ func (h *Handlers) APIGetSource(c *gin.Context) {
 
 // APICreateSourceRequest represents the request body for creating a source.
 type APICreateSourceRequest struct {
-	Name             string `json:"name"`
-	SourceType       string `json:"source_type"`
-	SourceURL        string `json:"source_url"`
-	SourceUsername   string `json:"source_username"`
-	SourcePassword   string `json:"source_password"`
-	DestURL          string `json:"dest_url"`
-	DestUsername     string `json:"dest_username"`
-	DestPassword     string `json:"dest_password"`
-	SyncInterval     int    `json:"sync_interval"`
-	ConflictStrategy string `json:"conflict_strategy"`
+	Name              string   `json:"name"`
+	SourceType        string   `json:"source_type"`
+	SourceURL         string   `json:"source_url"`
+	SourceUsername    string   `json:"source_username"`
+	SourcePassword    string   `json:"source_password"`
+	DestURL           string   `json:"dest_url"`
+	DestUsername      string   `json:"dest_username"`
+	DestPassword      string   `json:"dest_password"`
+	SyncInterval      int      `json:"sync_interval"`
+	SyncDirection     string   `json:"sync_direction"`
+	ConflictStrategy  string   `json:"conflict_strategy"`
+	SelectedCalendars []string `json:"selected_calendars"`
 }
 
 // APICreateSource creates a new source.
@@ -430,18 +445,20 @@ func (h *Handlers) APICreateSource(c *gin.Context) {
 	}
 
 	source := &db.Source{
-		UserID:           session.UserID,
-		Name:             req.Name,
-		SourceType:       db.SourceType(req.SourceType),
-		SourceURL:        req.SourceURL,
-		SourceUsername:   req.SourceUsername,
-		SourcePassword:   encSourcePwd,
-		DestURL:          req.DestURL,
-		DestUsername:     req.DestUsername,
-		DestPassword:     encDestPwd,
-		SyncInterval:     syncInterval,
-		ConflictStrategy: db.ConflictStrategy(req.ConflictStrategy),
-		Enabled:          true,
+		UserID:            session.UserID,
+		Name:              req.Name,
+		SourceType:        db.SourceType(req.SourceType),
+		SourceURL:         req.SourceURL,
+		SourceUsername:    req.SourceUsername,
+		SourcePassword:    encSourcePwd,
+		DestURL:           req.DestURL,
+		DestUsername:      req.DestUsername,
+		DestPassword:      encDestPwd,
+		SyncInterval:      syncInterval,
+		SyncDirection:     db.SyncDirection(req.SyncDirection),
+		ConflictStrategy:  db.ConflictStrategy(req.ConflictStrategy),
+		SelectedCalendars: req.SelectedCalendars,
+		Enabled:           true,
 	}
 
 	if err := h.db.CreateSource(source); err != nil {
@@ -456,17 +473,18 @@ func (h *Handlers) APICreateSource(c *gin.Context) {
 
 // APIUpdateSourceRequest represents the request body for updating a source.
 type APIUpdateSourceRequest struct {
-	Name             string `json:"name"`
-	SourceType       string `json:"source_type"`
-	SourceURL        string `json:"source_url"`
-	SourceUsername   string `json:"source_username"`
-	SourcePassword   string `json:"source_password,omitempty"`
-	DestURL          string `json:"dest_url"`
-	DestUsername     string `json:"dest_username"`
-	DestPassword     string `json:"dest_password,omitempty"`
-	SyncInterval     int    `json:"sync_interval"`
-	SyncDirection    string `json:"sync_direction"`
-	ConflictStrategy string `json:"conflict_strategy"`
+	Name              string   `json:"name"`
+	SourceType        string   `json:"source_type"`
+	SourceURL         string   `json:"source_url"`
+	SourceUsername    string   `json:"source_username"`
+	SourcePassword    string   `json:"source_password,omitempty"`
+	DestURL           string   `json:"dest_url"`
+	DestUsername      string   `json:"dest_username"`
+	DestPassword      string   `json:"dest_password,omitempty"`
+	SyncInterval      int      `json:"sync_interval"`
+	SyncDirection     string   `json:"sync_direction"`
+	ConflictStrategy  string   `json:"conflict_strategy"`
+	SelectedCalendars []string `json:"selected_calendars"`
 }
 
 // APIUpdateSource updates an existing source.
@@ -504,6 +522,7 @@ func (h *Handlers) APIUpdateSource(c *gin.Context) {
 	source.DestUsername = req.DestUsername
 	source.SyncDirection = db.SyncDirection(req.SyncDirection)
 	source.ConflictStrategy = db.ConflictStrategy(req.ConflictStrategy)
+	source.SelectedCalendars = req.SelectedCalendars
 	if req.SyncInterval > 0 {
 		source.SyncInterval = req.SyncInterval
 	}
@@ -786,4 +805,61 @@ func (h *Handlers) APIDeleteMalformedEvent(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Malformed event deleted"})
+}
+
+// APIDiscoverCalendarsRequest represents the request body for discovering calendars.
+type APIDiscoverCalendarsRequest struct {
+	URL      string `json:"url"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// APIDiscoverCalendars discovers calendars on a CalDAV server.
+func (h *Handlers) APIDiscoverCalendars(c *gin.Context) {
+	session := auth.GetCurrentUser(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var req APIDiscoverCalendarsRequest
+	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if req.URL == "" || req.Username == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "URL, username and password are required"})
+		return
+	}
+
+	// Create CalDAV client and discover calendars
+	client, err := caldav.NewClient(req.URL, req.Username, req.Password)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to connect: " + err.Error()})
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := client.TestConnection(ctx); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Connection test failed: " + err.Error()})
+		return
+	}
+
+	calendars, err := client.FindCalendars(ctx)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to discover calendars: " + err.Error()})
+		return
+	}
+
+	apiCalendars := make([]*APICalendar, len(calendars))
+	for i, cal := range calendars {
+		apiCalendars[i] = &APICalendar{
+			Name:  cal.Name,
+			Path:  cal.Path,
+			Color: cal.Color,
+		}
+	}
+
+	c.JSON(http.StatusOK, apiCalendars)
 }

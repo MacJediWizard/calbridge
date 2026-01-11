@@ -49,6 +49,7 @@ func SetupRoutes(r *gin.Engine, h *Handlers, sm *auth.SessionManager) {
 		protectedAPI.GET("/sources/:id/logs", h.APIGetSourceLogs)
 		protectedAPI.GET("/malformed-events", h.APIGetMalformedEvents)
 		protectedAPI.DELETE("/malformed-events/:id", h.APIDeleteMalformedEvent)
+		protectedAPI.POST("/calendars/discover", h.APIDiscoverCalendars)
 	}
 
 	// Serve React app static files

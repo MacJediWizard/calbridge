@@ -96,25 +96,26 @@ type User struct {
 
 // Source represents a calendar source configuration.
 type Source struct {
-	ID               string           `json:"id"`
-	UserID           string           `json:"user_id"`
-	Name             string           `json:"name"`
-	SourceType       SourceType       `json:"source_type"`
-	SourceURL        string           `json:"source_url"`
-	SourceUsername   string           `json:"source_username"`
-	SourcePassword   string           `json:"-"` // Never include in JSON
-	DestURL          string           `json:"dest_url"`
-	DestUsername     string           `json:"dest_username"`
-	DestPassword     string           `json:"-"` // Never include in JSON
-	SyncInterval     int              `json:"sync_interval"`
-	SyncDirection    SyncDirection    `json:"sync_direction"`
-	ConflictStrategy ConflictStrategy `json:"conflict_strategy"`
-	Enabled          bool             `json:"enabled"`
-	LastSyncAt       *time.Time       `json:"last_sync_at"`
-	LastSyncStatus   SyncStatus       `json:"last_sync_status"`
-	LastSyncMessage  string           `json:"last_sync_message"`
-	CreatedAt        time.Time        `json:"created_at"`
-	UpdatedAt        time.Time        `json:"updated_at"`
+	ID                string           `json:"id"`
+	UserID            string           `json:"user_id"`
+	Name              string           `json:"name"`
+	SourceType        SourceType       `json:"source_type"`
+	SourceURL         string           `json:"source_url"`
+	SourceUsername    string           `json:"source_username"`
+	SourcePassword    string           `json:"-"` // Never include in JSON
+	DestURL           string           `json:"dest_url"`
+	DestUsername      string           `json:"dest_username"`
+	DestPassword      string           `json:"-"` // Never include in JSON
+	SyncInterval      int              `json:"sync_interval"`
+	SyncDirection     SyncDirection    `json:"sync_direction"`
+	ConflictStrategy  ConflictStrategy `json:"conflict_strategy"`
+	SelectedCalendars []string         `json:"selected_calendars"` // Calendar paths to sync (empty = all)
+	Enabled           bool             `json:"enabled"`
+	LastSyncAt        *time.Time       `json:"last_sync_at"`
+	LastSyncStatus    SyncStatus       `json:"last_sync_status"`
+	LastSyncMessage   string           `json:"last_sync_message"`
+	CreatedAt         time.Time        `json:"created_at"`
+	UpdatedAt         time.Time        `json:"updated_at"`
 }
 
 // SyncState represents the synchronization state for a calendar.

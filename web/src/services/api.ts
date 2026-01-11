@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Source, SyncLog, DashboardStats, SourceFormData, AuthStatus, SyncHistory, MalformedEvent } from '../types';
+import type { Source, SyncLog, DashboardStats, SourceFormData, AuthStatus, SyncHistory, MalformedEvent, Calendar } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -77,6 +77,12 @@ export const getMalformedEvents = async (): Promise<MalformedEvent[]> => {
 
 export const deleteMalformedEvent = async (id: string): Promise<void> => {
   await api.delete(`/malformed-events/${id}`);
+};
+
+// Calendar Discovery
+export const discoverCalendars = async (url: string, username: string, password: string): Promise<Calendar[]> => {
+  const response = await api.post('/calendars/discover', { url, username, password });
+  return response.data;
 };
 
 export default api;

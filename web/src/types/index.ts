@@ -16,11 +16,18 @@ export interface Source {
   sync_interval: number;
   sync_direction: 'one_way' | 'two_way';
   conflict_strategy: string;
+  selected_calendars: string[];
   enabled: boolean;
   sync_status: string;
   last_sync_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Calendar {
+  name: string;
+  path: string;
+  color?: string;
 }
 
 export interface SyncLog {
@@ -58,6 +65,7 @@ export interface SourceFormData {
   sync_interval: number;
   sync_direction: 'one_way' | 'two_way';
   conflict_strategy: string;
+  selected_calendars: string[];
 }
 
 export interface ApiResponse<T> {

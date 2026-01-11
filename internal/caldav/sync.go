@@ -127,6 +127,24 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 		log.Printf("  [%d] Name: %q, Path: %s", i+1, cal.Name, cal.Path)
 	}
 
+	// Filter calendars based on selected_calendars setting
+	if len(source.SelectedCalendars) > 0 {
+		selectedSet := make(map[string]bool)
+		for _, path := range source.SelectedCalendars {
+			selectedSet[path] = true
+		}
+
+		var filteredCalendars []Calendar
+		for _, cal := range sourceCalendars {
+			if selectedSet[cal.Path] {
+				filteredCalendars = append(filteredCalendars, cal)
+			}
+		}
+
+		log.Printf("Filtered to %d selected calendars (from %d discovered)", len(filteredCalendars), len(sourceCalendars))
+		sourceCalendars = filteredCalendars
+	}
+
 	// Sync each calendar
 	for _, cal := range sourceCalendars {
 		calResult := se.syncCalendar(ctx, source, sourceClient, destClient, cal)
