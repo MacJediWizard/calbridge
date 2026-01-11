@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,7 +72,8 @@ func New(dbPath string) (*DB, error) {
 	// Set file permissions (0600 for security)
 	if err := os.Chmod(dbPath, 0600); err != nil {
 		// Log warning but don't fail - file might not exist yet in WAL mode
-		_ = err
+		// or we may not have permission to change it (e.g., running in container)
+		log.Printf("WARNING: Could not set database file permissions to 0600: %v", err)
 	}
 
 	return db, nil

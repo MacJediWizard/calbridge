@@ -52,6 +52,48 @@ func categorizeConnectionError(err error) string {
 	}
 }
 
+// Input validation constants
+const (
+	maxNameLength     = 100
+	maxURLLength      = 500
+	maxUsernameLength = 100
+	maxPasswordLength = 500
+)
+
+// validateSourceInput validates source input fields for length and enum values.
+// Returns an error message if validation fails, empty string if valid.
+func validateSourceInput(name, sourceType, syncDirection, conflictStrategy, sourceURL, destURL, sourceUsername, destUsername string) string {
+	// Validate lengths
+	if len(name) > maxNameLength {
+		return "Name is too long (max 100 characters)"
+	}
+	if len(sourceURL) > maxURLLength {
+		return "Source URL is too long (max 500 characters)"
+	}
+	if len(destURL) > maxURLLength {
+		return "Destination URL is too long (max 500 characters)"
+	}
+	if len(sourceUsername) > maxUsernameLength {
+		return "Source username is too long (max 100 characters)"
+	}
+	if len(destUsername) > maxUsernameLength {
+		return "Destination username is too long (max 100 characters)"
+	}
+
+	// Validate enum values
+	if sourceType != "" && !db.SourceType(sourceType).IsValid() {
+		return "Invalid source type"
+	}
+	if syncDirection != "" && !db.SyncDirection(syncDirection).IsValid() {
+		return "Invalid sync direction"
+	}
+	if conflictStrategy != "" && !db.ConflictStrategy(conflictStrategy).IsValid() {
+		return "Invalid conflict strategy"
+	}
+
+	return ""
+}
+
 // APISource represents a source in JSON format for the API.
 type APISource struct {
 	ID                string   `json:"id"`
@@ -446,6 +488,22 @@ func (h *Handlers) APICreateSource(c *gin.Context) {
 		return
 	}
 
+	// Validate input lengths and enum values
+	if validationErr := validateSourceInput(req.Name, req.SourceType, req.SyncDirection, req.ConflictStrategy, req.SourceURL, req.DestURL, req.SourceUsername, req.DestUsername); validationErr != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": validationErr})
+		return
+	}
+
+	// Validate password lengths
+	if len(req.SourcePassword) > maxPasswordLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Source password is too long"})
+		return
+	}
+	if len(req.DestPassword) > maxPasswordLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Destination password is too long"})
+		return
+	}
+
 	// Test source connection
 	ctx := c.Request.Context()
 	if err := h.syncEngine.TestConnection(ctx, req.SourceURL, req.SourceUsername, req.SourcePassword); err != nil {
@@ -543,6 +601,22 @@ func (h *Handlers) APIUpdateSource(c *gin.Context) {
 	var req APIUpdateSourceRequest
 	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Validate input lengths and enum values
+	if validationErr := validateSourceInput(req.Name, req.SourceType, req.SyncDirection, req.ConflictStrategy, req.SourceURL, req.DestURL, req.SourceUsername, req.DestUsername); validationErr != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": validationErr})
+		return
+	}
+
+	// Validate password lengths if provided
+	if req.SourcePassword != "" && len(req.SourcePassword) > maxPasswordLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Source password is too long"})
+		return
+	}
+	if req.DestPassword != "" && len(req.DestPassword) > maxPasswordLength {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Destination password is too long"})
 		return
 	}
 

@@ -14,6 +14,9 @@ import (
 // SecurityHeaders adds security headers to all responses.
 func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Suppress Server header to avoid revealing technology stack
+		c.Header("Server", "")
+
 		c.Header("X-Content-Type-Options", "nosniff")
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-XSS-Protection", "1; mode=block")
@@ -28,9 +31,12 @@ func SecurityHeaders() gin.HandlerFunc {
 		// Permissions-Policy - restrict browser features we don't need
 		c.Header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
 
-		// CSP - Note: 'unsafe-inline' for styles is required for Tailwind CSS
-		// Scripts use 'unsafe-inline' only for Vite dev mode; in production builds it's not needed
-		// but keeping it for compatibility
+		// CSP - Content Security Policy
+		// Note on 'unsafe-inline':
+		// - style-src: Required for Tailwind CSS which uses inline styles
+		// - script-src: Required for React/Vite which injects inline scripts for HMR in dev
+		//   and may use inline event handlers. Removing this would require nonce-based CSP
+		//   which adds complexity. The XSS risk is mitigated by React's automatic escaping.
 		c.Header("Content-Security-Policy", "default-src 'self'; "+
 			"script-src 'self' 'unsafe-inline' https://unpkg.com; "+
 			"style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "+
@@ -153,19 +159,36 @@ func ValidateOrigin() gin.HandlerFunc {
 	}
 }
 
+// allowedOriginsCache caches the parsed origins to avoid repeated parsing and logging
+var allowedOriginsCache []string
+var allowedOriginsCacheInit bool
+
 // getAllowedOrigins returns the list of allowed origins for CSRF validation.
+// SECURITY: In production, always set ALLOWED_ORIGINS environment variable.
 func getAllowedOrigins() []string {
+	// Return cached value if already initialized
+	if allowedOriginsCacheInit {
+		return allowedOriginsCache
+	}
+
 	origins := []string{}
 
 	// Add from environment variable if set
 	if env := os.Getenv("ALLOWED_ORIGINS"); env != "" {
 		for _, o := range strings.Split(env, ",") {
-			origins = append(origins, strings.TrimSpace(o))
+			origin := strings.TrimSpace(o)
+			if isValidOrigin(origin) {
+				origins = append(origins, origin)
+			} else {
+				log.Printf("WARNING: Invalid origin in ALLOWED_ORIGINS ignored: %s", origin)
+			}
 		}
 	}
 
-	// Add default localhost origins for development
+	// Fall back to localhost origins for development only
 	if len(origins) == 0 {
+		// Log warning - this should not happen in production
+		log.Printf("WARNING: ALLOWED_ORIGINS not set - using localhost defaults. Set ALLOWED_ORIGINS in production!")
 		origins = []string{
 			"http://localhost:8080",
 			"http://localhost:5173",
@@ -174,7 +197,34 @@ func getAllowedOrigins() []string {
 		}
 	}
 
+	// Cache the result
+	allowedOriginsCache = origins
+	allowedOriginsCacheInit = true
+
 	return origins
+}
+
+// isValidOrigin validates that an origin string is a proper URL format.
+func isValidOrigin(origin string) bool {
+	if origin == "" {
+		return false
+	}
+	// Must start with http:// or https://
+	if !strings.HasPrefix(origin, "http://") && !strings.HasPrefix(origin, "https://") {
+		return false
+	}
+	// Must not end with a slash (origins don't have paths)
+	if strings.HasSuffix(origin, "/") {
+		return false
+	}
+	// Must have a host after the protocol
+	if strings.HasPrefix(origin, "http://") && len(origin) <= 7 {
+		return false
+	}
+	if strings.HasPrefix(origin, "https://") && len(origin) <= 8 {
+		return false
+	}
+	return true
 }
 
 // IsSafeRedirectURL validates that a URL is safe for redirects (relative paths only).

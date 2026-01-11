@@ -309,7 +309,8 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 			log.Printf("  [%d] Name: %q, Path: %s", i+1, cal.Name, cal.Path)
 		}
 		// Use the first calendar found (most destinations have a single calendar for syncing)
-		// TODO: Could match by name to source calendar for more sophisticated mapping
+		// Note: Future enhancement could match calendars by name for multi-calendar destinations.
+		// Current behavior: Uses first available calendar, which works for typical single-calendar setups.
 		destCalendarPath = destCalendars[0].Path
 		if len(destCalendars) > 1 {
 			log.Printf("WARNING: Multiple destination calendars found, using first one: %s", destCalendarPath)

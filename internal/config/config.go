@@ -57,8 +57,10 @@ type OIDCConfig struct {
 
 // SecurityConfig holds security-related configuration.
 type SecurityConfig struct {
-	EncryptionKey []byte
-	SessionSecret string
+	EncryptionKey       []byte
+	SessionSecret       string
+	SessionMaxAgeSecs   int // Session timeout in seconds (default: 86400 = 24 hours)
+	OAuthStateMaxAgeSecs int // OAuth state timeout in seconds (default: 300 = 5 minutes)
 }
 
 // DatabaseConfig holds database configuration.
@@ -123,6 +125,20 @@ func Load() (*Config, error) {
 	if cfg.Security.SessionSecret != "" && len(cfg.Security.SessionSecret) < 32 {
 		return nil, ErrSessionSecretSize
 	}
+
+	// Session timeout - default 24 hours (reduced from 7 days for security)
+	sessionMaxAge, err := getEnvInt("SESSION_MAX_AGE_SECS", 86400)
+	if err != nil {
+		return nil, fmt.Errorf("%w: SESSION_MAX_AGE_SECS: %w", ErrInvalidConfig, err)
+	}
+	cfg.Security.SessionMaxAgeSecs = sessionMaxAge
+
+	// OAuth state timeout - default 5 minutes (OWASP recommended)
+	oauthStateMaxAge, err := getEnvInt("OAUTH_STATE_MAX_AGE_SECS", 300)
+	if err != nil {
+		return nil, fmt.Errorf("%w: OAUTH_STATE_MAX_AGE_SECS: %w", ErrInvalidConfig, err)
+	}
+	cfg.Security.OAuthStateMaxAgeSecs = oauthStateMaxAge
 
 	// Database configuration
 	cfg.Database.Path = getEnv("DATABASE_PATH", "./data/calbridgesync.db")

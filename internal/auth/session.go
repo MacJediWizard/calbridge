@@ -12,7 +12,6 @@ import (
 const (
 	sessionName     = "calbridgesync_session"
 	oauthStateName  = "calbridgesync_oauth_state"
-	sessionMaxAge   = 7 * 24 * 60 * 60 // 7 days in seconds
 	csrfTokenLength = 32
 )
 
@@ -32,16 +31,19 @@ type SessionData struct {
 
 // SessionManager manages user sessions.
 type SessionManager struct {
-	store  *sessions.CookieStore
-	secure bool
+	store             *sessions.CookieStore
+	secure            bool
+	oauthStateMaxAge  int // OAuth state timeout in seconds
 }
 
 // NewSessionManager creates a new session manager.
-func NewSessionManager(secret string, secure bool) *SessionManager {
+// sessionMaxAgeSecs: Session timeout in seconds (e.g., 86400 for 24 hours)
+// oauthStateMaxAgeSecs: OAuth state timeout in seconds (e.g., 300 for 5 minutes)
+func NewSessionManager(secret string, secure bool, sessionMaxAgeSecs, oauthStateMaxAgeSecs int) *SessionManager {
 	store := sessions.NewCookieStore([]byte(secret))
 	store.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   sessionMaxAge,
+		MaxAge:   sessionMaxAgeSecs,
 		HttpOnly: true,
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,
@@ -52,8 +54,9 @@ func NewSessionManager(secret string, secure bool) *SessionManager {
 	}
 
 	return &SessionManager{
-		store:  store,
-		secure: secure,
+		store:            store,
+		secure:           secure,
+		oauthStateMaxAge: oauthStateMaxAgeSecs,
 	}
 }
 
@@ -144,7 +147,7 @@ func (sm *SessionManager) SetOAuthState(w http.ResponseWriter, r *http.Request, 
 	}
 
 	session.Values["state"] = state
-	session.Options.MaxAge = 600 // 10 minutes
+	session.Options.MaxAge = sm.oauthStateMaxAge // Configurable via OAUTH_STATE_MAX_AGE_SECS
 
 	return session.Save(r, w)
 }

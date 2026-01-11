@@ -43,6 +43,43 @@ const (
 	SourceTypeCustom    SourceType = "custom"
 )
 
+// ValidSourceTypes contains all valid source type values.
+var ValidSourceTypes = map[SourceType]bool{
+	SourceTypeICloud:    true,
+	SourceTypeGoogle:    true,
+	SourceTypeFastmail:  true,
+	SourceTypeNextcloud: true,
+	SourceTypeCustom:    true,
+}
+
+// IsValid returns true if the source type is a known valid value.
+func (st SourceType) IsValid() bool {
+	return ValidSourceTypes[st]
+}
+
+// ValidConflictStrategies contains all valid conflict strategy values.
+var ValidConflictStrategies = map[ConflictStrategy]bool{
+	ConflictSourceWins: true,
+	ConflictDestWins:   true,
+	ConflictLatestWins: true,
+}
+
+// IsValid returns true if the conflict strategy is a known valid value.
+func (cs ConflictStrategy) IsValid() bool {
+	return ValidConflictStrategies[cs]
+}
+
+// ValidSyncDirections contains all valid sync direction values.
+var ValidSyncDirections = map[SyncDirection]bool{
+	SyncDirectionOneWay: true,
+	SyncDirectionTwoWay: true,
+}
+
+// IsValid returns true if the sync direction is a known valid value.
+func (sd SyncDirection) IsValid() bool {
+	return ValidSyncDirections[sd]
+}
+
 // SourcePreset contains preset configuration for known calendar providers.
 type SourcePreset struct {
 	Name        string

@@ -84,6 +84,8 @@ func (h *Handlers) LoginPage(c *gin.Context) {
 }
 
 // Login initiates OIDC authentication.
+// Note: Account lockout and brute-force protection are delegated to the OIDC provider
+// (e.g., Authentik, Keycloak, Okta). Configure these protections in your identity provider.
 func (h *Handlers) Login(c *gin.Context) {
 	state, err := auth.GenerateState()
 	if err != nil {

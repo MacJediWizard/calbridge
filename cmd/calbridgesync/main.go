@@ -74,8 +74,13 @@ func main() {
 		log.Fatalf("Failed to initialize OIDC provider: %v", err)
 	}
 
-	// Initialize session manager
-	sessionManager := auth.NewSessionManager(cfg.Security.SessionSecret, cfg.IsProduction())
+	// Initialize session manager with configurable timeouts
+	sessionManager := auth.NewSessionManager(
+		cfg.Security.SessionSecret,
+		cfg.IsProduction(),
+		cfg.Security.SessionMaxAgeSecs,
+		cfg.Security.OAuthStateMaxAgeSecs,
+	)
 
 	// Initialize sync engine
 	syncEngine := caldav.NewSyncEngine(database, encryptor)

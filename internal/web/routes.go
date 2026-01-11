@@ -10,14 +10,22 @@ import (
 )
 
 // SetupRoutes configures all application routes.
+//
+// Rate Limiting Strategy:
+// - Auth endpoints: 5 req/s, burst 10 - Strict to prevent credential brute-force
+// - General API: 30 req/s, burst 60 - Allows normal UI usage with headroom for page loads
+// - Expensive ops: 2 req/s, burst 5 - Very strict for operations that make external network calls
+//
+// These values balance security with usability. Adjust via code if needed for your deployment.
 func SetupRoutes(r *gin.Engine, h *Handlers, sm *auth.SessionManager) {
-	// Health endpoints (no auth, no rate limit)
+	// Health endpoints (no auth, no rate limit) - must always be accessible for orchestration
 	r.GET("/health", h.HealthCheck)
 	r.GET("/healthz", h.Liveness)
 	r.GET("/ready", h.Readiness)
 
-	// Auth endpoints with rate limiting to prevent brute force attacks
-	authRateLimiter := RateLimiter(5, 10) // 5 requests/sec, burst of 10
+	// Auth endpoints with strict rate limiting to prevent brute force attacks on OIDC flow
+	// 5 req/s allows normal login flow but prevents automated attacks
+	authRateLimiter := RateLimiter(5, 10)
 	authGroup := r.Group("/auth")
 	authGroup.Use(authRateLimiter)
 	{
@@ -27,8 +35,8 @@ func SetupRoutes(r *gin.Engine, h *Handlers, sm *auth.SessionManager) {
 		authGroup.POST("/logout", h.Logout)
 	}
 
-	// API routes for React frontend with rate limiting
-	apiRateLimiter := RateLimiter(30, 60) // 30 requests/sec, burst of 60
+	// General API routes - 30 req/s handles typical SPA usage (page loads fetch multiple endpoints)
+	apiRateLimiter := RateLimiter(30, 60)
 	apiGroup := r.Group("/api")
 	apiGroup.Use(apiRateLimiter)
 	apiGroup.Use(auth.OptionalAuth(sm))
@@ -57,16 +65,17 @@ func SetupRoutes(r *gin.Engine, h *Handlers, sm *auth.SessionManager) {
 		protectedAPI.DELETE("/malformed-events/:id", h.APIDeleteMalformedEvent)
 	}
 
-	// Expensive operations with stricter rate limiting (network calls, credential testing)
-	expensiveRateLimiter := RateLimiter(2, 5) // 2 requests/sec, burst of 5
+	// Expensive operations - 2 req/s prevents abuse of network-intensive operations
+	// These endpoints make external CalDAV connections which are slow and resource-intensive
+	expensiveRateLimiter := RateLimiter(2, 5)
 	expensiveAPI := r.Group("/api")
 	expensiveAPI.Use(expensiveRateLimiter)
 	expensiveAPI.Use(auth.RequireAuth(sm))
 	expensiveAPI.Use(ValidateOrigin())
 	expensiveAPI.Use(RequireJSONContentType())
 	{
-		expensiveAPI.POST("/sources", h.APICreateSource)           // Tests connections
-		expensiveAPI.POST("/calendars/discover", h.APIDiscoverCalendars) // Network call
+		expensiveAPI.POST("/sources", h.APICreateSource)                  // Tests connections to CalDAV servers
+		expensiveAPI.POST("/calendars/discover", h.APIDiscoverCalendars) // Discovers calendars via network
 	}
 
 	// Serve React app static files
