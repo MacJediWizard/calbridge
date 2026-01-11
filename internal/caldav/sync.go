@@ -256,16 +256,36 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		}
 	}
 
-	// Get the destination calendar path from the destination client's base URL
-	destCalendarPath := destClient.GetCalendarPath()
+	// Discover destination calendar path - try calendar discovery first, then fall back to URL path
+	destCalendarPath := ""
+	destCalendars, err := destClient.FindCalendars(ctx)
+	if err != nil {
+		log.Printf("Failed to discover destination calendars, falling back to URL path: %v", err)
+		destCalendarPath = destClient.GetCalendarPath()
+	} else if len(destCalendars) == 0 {
+		log.Printf("No calendars found on destination, using URL path as fallback")
+		destCalendarPath = destClient.GetCalendarPath()
+	} else {
+		log.Printf("Found %d calendar(s) on destination:", len(destCalendars))
+		for i, cal := range destCalendars {
+			log.Printf("  [%d] Name: %q, Path: %s", i+1, cal.Name, cal.Path)
+		}
+		// Use the first calendar found (most destinations have a single calendar for syncing)
+		// TODO: Could match by name to source calendar for more sophisticated mapping
+		destCalendarPath = destCalendars[0].Path
+		if len(destCalendars) > 1 {
+			log.Printf("WARNING: Multiple destination calendars found, using first one: %s", destCalendarPath)
+		}
+	}
 	log.Printf("Using destination calendar path: %s", destCalendarPath)
 
 	// Get all events from destination (no collector needed - we only track source issues)
 	destEvents, err := destClient.GetEvents(ctx, destCalendarPath, nil)
 	if err != nil {
-		log.Printf("Failed to get destination events: %v", err)
+		log.Printf("Failed to get destination events (path: %s): %v", destCalendarPath, err)
 		destEvents = []Event{}
 	}
+	log.Printf("Fetched %d events from destination calendar", len(destEvents))
 
 	// Get previously synced events for deletion detection
 	previouslySynced, err := se.db.GetSyncedEvents(source.ID, calendar.Path)

@@ -253,7 +253,9 @@ func (c *Client) getEventsViaList(ctx context.Context, calendarPath string, coll
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
+	log.Printf("PROPFIND response for %s: status=%d, body_len=%d", fullURL, resp.StatusCode, len(body))
 	eventPaths := parseEventPaths(body, calendarPath)
+	log.Printf("Parsed %d event paths from PROPFIND response (calendarPath=%s)", len(eventPaths), calendarPath)
 
 	// Fetch each event individually
 	events := make([]Event, 0, len(eventPaths))
@@ -343,13 +345,22 @@ func parseEventPaths(body []byte, basePath string) []string {
 
 	var ms propfindResponse
 	if err := xml.Unmarshal(body, &ms); err != nil {
+		log.Printf("parseEventPaths: XML unmarshal failed: %v", err)
+		// Try to log a snippet of the response for debugging
+		if len(body) > 500 {
+			log.Printf("parseEventPaths: response body (first 500 bytes): %s", string(body[:500]))
+		} else {
+			log.Printf("parseEventPaths: response body: %s", string(body))
+		}
 		return nil
 	}
 
+	log.Printf("parseEventPaths: found %d responses in multistatus (basePath=%s)", len(ms.Responses), basePath)
 	paths := make([]string, 0)
 	for _, resp := range ms.Responses {
 		// Skip the collection itself
 		if resp.Href == basePath || resp.Href+"/" == basePath || basePath+"/" == resp.Href {
+			log.Printf("parseEventPaths: skipping collection path: %s", resp.Href)
 			continue
 		}
 		// Check if it's a calendar object (ends with .ics or has calendar content type)
@@ -362,6 +373,8 @@ func parseEventPaths(body []byte, basePath string) []string {
 				decodedPath = resp.Href
 			}
 			paths = append(paths, decodedPath)
+		} else {
+			log.Printf("parseEventPaths: skipping non-event: href=%s contentType=%s", resp.Href, resp.PropStat.Prop.ContentType)
 		}
 	}
 	return paths
