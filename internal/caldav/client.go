@@ -182,12 +182,17 @@ func (c *Client) FindCalendars(ctx context.Context) ([]Calendar, error) {
 func (c *Client) GetEvents(ctx context.Context, calendarPath string, collector *MalformedEventCollector) ([]Event, error) {
 	// Try the standard calendar-query first
 	events, err := c.getEventsViaQuery(ctx, calendarPath)
-	if err == nil {
+	if err == nil && len(events) > 0 {
 		return events, nil
 	}
 
-	// If query failed (412, etc.), fall back to multiget via PROPFIND
-	log.Printf("Calendar query failed, trying PROPFIND fallback: %v", err)
+	// If query failed (412, etc.) OR returned 0 events, fall back to PROPFIND
+	// Some servers (like SOGo) may return empty results from REPORT but have events accessible via PROPFIND
+	if err != nil {
+		log.Printf("Calendar query failed, trying PROPFIND fallback: %v", err)
+	} else {
+		log.Printf("Calendar query returned 0 events, trying PROPFIND fallback for path: %s", calendarPath)
+	}
 	return c.getEventsViaPropfind(ctx, calendarPath, collector)
 }
 
