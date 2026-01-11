@@ -154,6 +154,9 @@ func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourc
 		syncToken = syncState.SyncToken
 	}
 
+	// Get the destination calendar path from the destination client's base URL
+	destCalendarPath := destClient.GetCalendarPath()
+
 	// Try WebDAV-Sync if supported
 	if sourceClient.SupportsWebDAVSync(ctx, calendar.Path) {
 		syncResult, err := sourceClient.SyncCollection(ctx, calendar.Path, syncToken)
@@ -166,7 +169,7 @@ func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourc
 						ETag: item.ETag,
 						Data: item.Data,
 					}
-					if err := destClient.PutEvent(ctx, calendar.Path, event); err != nil {
+					if err := destClient.PutEvent(ctx, destCalendarPath, event); err != nil {
 						result.Errors = append(result.Errors, fmt.Sprintf("Failed to sync event: %v", err))
 					} else {
 						result.Updated++
@@ -215,8 +218,13 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		return result
 	}
 
+	// Get the destination calendar path from the destination client's base URL
+	// The destination URL is already configured to point to the target calendar
+	destCalendarPath := destClient.GetCalendarPath()
+	log.Printf("Using destination calendar path: %s", destCalendarPath)
+
 	// Get all events from destination
-	destEvents, err := destClient.GetEvents(ctx, calendar.Path)
+	destEvents, err := destClient.GetEvents(ctx, destCalendarPath)
 	if err != nil {
 		// Destination calendar might not exist yet
 		log.Printf("Failed to get destination events: %v", err)
@@ -237,7 +245,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 
 		if !exists {
 			// Create new event
-			if err := destClient.PutEvent(ctx, calendar.Path, &sourceEvent); err != nil {
+			if err := destClient.PutEvent(ctx, destCalendarPath, &sourceEvent); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("Failed to create event: %v", err))
 			} else {
 				result.Created++
@@ -245,7 +253,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		} else if sourceEvent.ETag != destEvent.ETag {
 			// Update existing event
 			sourceEvent.Path = destEvent.Path // Use destination path
-			if err := destClient.PutEvent(ctx, calendar.Path, &sourceEvent); err != nil {
+			if err := destClient.PutEvent(ctx, destCalendarPath, &sourceEvent); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("Failed to update event: %v", err))
 			} else {
 				result.Updated++

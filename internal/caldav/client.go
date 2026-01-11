@@ -288,6 +288,18 @@ func parseEventPaths(body []byte, basePath string) []string {
 	return paths
 }
 
+// GetCalendarPath returns the path portion of the client's base URL.
+// This is useful when the client is configured for a specific calendar.
+func (c *Client) GetCalendarPath() string {
+	if idx := strings.Index(c.baseURL, "://"); idx != -1 {
+		rest := c.baseURL[idx+3:]
+		if slashIdx := strings.Index(rest, "/"); slashIdx != -1 {
+			return rest[slashIdx:]
+		}
+	}
+	return "/"
+}
+
 // buildURL constructs the full URL for a path.
 // If path is absolute (starts with /), extract host from baseURL and combine.
 // Otherwise, append path to baseURL.
