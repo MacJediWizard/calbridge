@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -132,6 +135,19 @@ func (c *Client) FindCalendars(ctx context.Context) ([]Calendar, error) {
 
 // GetEvents retrieves all events from a calendar.
 func (c *Client) GetEvents(ctx context.Context, calendarPath string) ([]Event, error) {
+	// Try the standard calendar-query first
+	events, err := c.getEventsViaQuery(ctx, calendarPath)
+	if err == nil {
+		return events, nil
+	}
+
+	// If query failed (412, etc.), fall back to multiget via PROPFIND
+	log.Printf("Calendar query failed, trying PROPFIND fallback: %v", err)
+	return c.getEventsViaPropfind(ctx, calendarPath)
+}
+
+// getEventsViaQuery uses REPORT calendar-query to get events.
+func (c *Client) getEventsViaQuery(ctx context.Context, calendarPath string) ([]Event, error) {
 	query := &caldav.CalendarQuery{
 		CompRequest: caldav.CalendarCompRequest{
 			Name: "VCALENDAR",
@@ -146,6 +162,73 @@ func (c *Client) GetEvents(ctx context.Context, calendarPath string) ([]Event, e
 		return nil, fmt.Errorf("%w: failed to query calendar: %w", ErrConnectionFailed, err)
 	}
 
+	return c.objectsToEvents(objects), nil
+}
+
+// getEventsViaPropfind uses PROPFIND to list calendar objects, then fetches each one.
+func (c *Client) getEventsViaPropfind(ctx context.Context, calendarPath string) ([]Event, error) {
+	// Use calendar multiget to get all objects
+	objects, err := c.caldavClient.MultiGetCalendar(ctx, calendarPath, nil)
+	if err != nil {
+		// If multiget fails, try getting individual objects via PROPFIND list
+		return c.getEventsViaList(ctx, calendarPath)
+	}
+
+	return c.objectsToEvents(objects), nil
+}
+
+// getEventsViaList lists calendar contents and fetches each event individually.
+func (c *Client) getEventsViaList(ctx context.Context, calendarPath string) ([]Event, error) {
+	// Make a simple PROPFIND request to list contents
+	req, err := http.NewRequestWithContext(ctx, "PROPFIND", c.baseURL+calendarPath, strings.NewReader(`<?xml version="1.0" encoding="utf-8" ?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop>
+    <D:getetag/>
+    <D:getcontenttype/>
+  </D:prop>
+</D:propfind>`))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.SetBasicAuth(c.username, c.password)
+	req.Header.Set("Content-Type", "application/xml; charset=utf-8")
+	req.Header.Set("Depth", "1")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrConnectionFailed, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMultiStatus && resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("%w: unexpected status %d", ErrInvalidResponse, resp.StatusCode)
+	}
+
+	// Parse the multistatus response to get event paths
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	eventPaths := parseEventPaths(body, calendarPath)
+
+	// Fetch each event individually
+	events := make([]Event, 0, len(eventPaths))
+	for _, path := range eventPaths {
+		event, err := c.GetEvent(ctx, path)
+		if err != nil {
+			log.Printf("Failed to fetch event %s: %v", path, err)
+			continue
+		}
+		events = append(events, *event)
+	}
+
+	return events, nil
+}
+
+// objectsToEvents converts CalDAV objects to Events.
+func (c *Client) objectsToEvents(objects []caldav.CalendarObject) []Event {
 	events := make([]Event, 0, len(objects))
 	for _, obj := range objects {
 		event := Event{
@@ -170,8 +253,42 @@ func (c *Client) GetEvents(ctx context.Context, calendarPath string) ([]Event, e
 
 		events = append(events, event)
 	}
+	return events
+}
 
-	return events, nil
+// parseEventPaths extracts .ics file paths from a PROPFIND multistatus response.
+func parseEventPaths(body []byte, basePath string) []string {
+	type propfindResponse struct {
+		XMLName   xml.Name `xml:"DAV: multistatus"`
+		Responses []struct {
+			Href     string `xml:"href"`
+			PropStat struct {
+				Prop struct {
+					ContentType string `xml:"getcontenttype"`
+				} `xml:"prop"`
+				Status string `xml:"status"`
+			} `xml:"propstat"`
+		} `xml:"response"`
+	}
+
+	var ms propfindResponse
+	if err := xml.Unmarshal(body, &ms); err != nil {
+		return nil
+	}
+
+	paths := make([]string, 0)
+	for _, resp := range ms.Responses {
+		// Skip the collection itself
+		if resp.Href == basePath || resp.Href+"/" == basePath || basePath+"/" == resp.Href {
+			continue
+		}
+		// Check if it's a calendar object (ends with .ics or has calendar content type)
+		if strings.HasSuffix(resp.Href, ".ics") ||
+			strings.Contains(resp.PropStat.Prop.ContentType, "calendar") {
+			paths = append(paths, resp.Href)
+		}
+	}
+	return paths
 }
 
 // GetEvent retrieves a single event by path.
