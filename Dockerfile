@@ -1,4 +1,17 @@
-# Build stage
+# Frontend build stage
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/web
+
+# Copy package files first for better caching
+COPY web/package*.json ./
+RUN npm ci
+
+# Copy source and build
+COPY web/ ./
+RUN npm run build
+
+# Go build stage
 FROM golang:1.24-alpine AS builder
 
 # Install build dependencies
@@ -34,8 +47,8 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /app/calbridge /app/calbridge
 
-# Copy React frontend build
-COPY --from=builder /app/web/dist /app/web/dist
+# Copy React frontend build from frontend-builder
+COPY --from=frontend-builder /app/web/dist /app/web/dist
 
 # Copy entrypoint script
 COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
