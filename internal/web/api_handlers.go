@@ -54,6 +54,33 @@ type APIDashboardStats struct {
 	FailedSyncs   int `json:"failed_syncs"`
 }
 
+// APISyncHistoryPoint represents a single data point in sync history.
+type APISyncHistoryPoint struct {
+	Date          string `json:"date"`
+	Success       int    `json:"success"`
+	Partial       int    `json:"partial"`
+	Error         int    `json:"error"`
+	EventsCreated int    `json:"events_created"`
+	EventsUpdated int    `json:"events_updated"`
+	EventsDeleted int    `json:"events_deleted"`
+}
+
+// APISyncHistory represents sync history data for charts.
+type APISyncHistory struct {
+	History []APISyncHistoryPoint `json:"history"`
+	Summary APISyncSummary        `json:"summary"`
+}
+
+// APISyncSummary represents aggregate sync statistics.
+type APISyncSummary struct {
+	TotalSyncs      int     `json:"total_syncs"`
+	SuccessRate     float64 `json:"success_rate"`
+	TotalCreated    int     `json:"total_created"`
+	TotalUpdated    int     `json:"total_updated"`
+	TotalDeleted    int     `json:"total_deleted"`
+	AvgDurationSecs float64 `json:"avg_duration_secs"`
+}
+
 // APIAuthStatus represents auth status response.
 type APIAuthStatus struct {
 	Authenticated bool    `json:"authenticated"`
@@ -184,6 +211,107 @@ func (h *Handlers) APIDashboardStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// APISyncHistory returns sync history for charts.
+func (h *Handlers) APISyncHistory(c *gin.Context) {
+	session := auth.GetCurrentUser(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// Get number of days from query param (default 7)
+	days := 7
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 && parsed <= 30 {
+			days = parsed
+		}
+	}
+
+	sources, err := h.db.GetSourcesByUserID(session.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load sources"})
+		return
+	}
+
+	// Collect all logs for all sources
+	var allLogs []*db.SyncLog
+	for _, s := range sources {
+		logs, _ := h.db.GetSyncLogs(s.ID, 500)
+		allLogs = append(allLogs, logs...)
+	}
+
+	// Build daily aggregates for the past N days
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -days+1).Truncate(24 * time.Hour)
+
+	// Initialize history points
+	historyMap := make(map[string]*APISyncHistoryPoint)
+	for i := 0; i < days; i++ {
+		date := startDate.AddDate(0, 0, i)
+		dateStr := date.Format("Jan 02")
+		historyMap[dateStr] = &APISyncHistoryPoint{Date: dateStr}
+	}
+
+	// Aggregate stats
+	var totalSyncs, successCount int
+	var totalDuration time.Duration
+	summary := APISyncSummary{}
+
+	for _, log := range allLogs {
+		logDate := log.CreatedAt.Truncate(24 * time.Hour)
+		if logDate.Before(startDate) {
+			continue
+		}
+
+		dateStr := log.CreatedAt.Format("Jan 02")
+		point, ok := historyMap[dateStr]
+		if !ok {
+			continue
+		}
+
+		totalSyncs++
+		totalDuration += log.Duration
+		summary.TotalCreated += log.EventsCreated
+		summary.TotalUpdated += log.EventsUpdated
+		summary.TotalDeleted += log.EventsDeleted
+		point.EventsCreated += log.EventsCreated
+		point.EventsUpdated += log.EventsUpdated
+		point.EventsDeleted += log.EventsDeleted
+
+		switch log.Status {
+		case db.SyncStatusSuccess:
+			point.Success++
+			successCount++
+		case db.SyncStatusPartial:
+			point.Partial++
+			successCount++ // Partial counts as success for rate calculation
+		case db.SyncStatusError:
+			point.Error++
+		}
+	}
+
+	// Build ordered history array
+	history := make([]APISyncHistoryPoint, 0, days)
+	for i := 0; i < days; i++ {
+		date := startDate.AddDate(0, 0, i)
+		dateStr := date.Format("Jan 02")
+		if point, ok := historyMap[dateStr]; ok {
+			history = append(history, *point)
+		}
+	}
+
+	summary.TotalSyncs = totalSyncs
+	if totalSyncs > 0 {
+		summary.SuccessRate = float64(successCount) / float64(totalSyncs) * 100
+		summary.AvgDurationSecs = totalDuration.Seconds() / float64(totalSyncs)
+	}
+
+	c.JSON(http.StatusOK, APISyncHistory{
+		History: history,
+		Summary: summary,
+	})
 }
 
 // APIListSources returns all sources for the user.

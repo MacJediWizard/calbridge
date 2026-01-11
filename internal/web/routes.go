@@ -38,6 +38,7 @@ func SetupRoutes(r *gin.Engine, h *Handlers, sm *auth.SessionManager) {
 	protectedAPI.Use(auth.RequireAuth(sm))
 	{
 		protectedAPI.GET("/dashboard/stats", h.APIDashboardStats)
+		protectedAPI.GET("/dashboard/sync-history", h.APISyncHistory)
 		protectedAPI.GET("/sources", h.APIListSources)
 		protectedAPI.POST("/sources", h.APICreateSource)
 		protectedAPI.GET("/sources/:id", h.APIGetSource)

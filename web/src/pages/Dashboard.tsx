@@ -1,11 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardStats, getSources, triggerSync } from '../services/api';
-import type { DashboardStats, Source } from '../types';
+import { getDashboardStats, getSources, triggerSync, getSyncHistory } from '../services/api';
+import type { DashboardStats, Source, SyncHistory } from '../types';
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [syncHistory, setSyncHistory] = useState<SyncHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -16,12 +29,14 @@ export default function Dashboard() {
 
   const loadData = async () => {
     try {
-      const [statsData, sourcesData] = await Promise.all([
+      const [statsData, sourcesData, historyData] = await Promise.all([
         getDashboardStats(),
         getSources(),
+        getSyncHistory(7),
       ]);
       setStats(statsData);
       setSources(sourcesData);
+      setSyncHistory(historyData);
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error(err);
@@ -96,6 +111,110 @@ export default function Dashboard() {
             <p className={`mt-1 text-2xl font-bold ${stats.failed_syncs > 0 ? 'text-red-400' : 'text-gray-500'}`}>
               {stats.failed_syncs}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Charts Section */}
+      {syncHistory && syncHistory.history.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Sync Status Chart */}
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
+            <h3 className="text-sm font-semibold text-white mb-4">Sync Status (7 Days)</h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={syncHistory.history} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 11 }} axisLine={{ stroke: '#444' }} />
+                  <YAxis tick={{ fill: '#888', fontSize: 11 }} axisLine={{ stroke: '#444' }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #333', borderRadius: '6px' }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  <Area
+                    type="monotone"
+                    dataKey="success"
+                    stackId="1"
+                    stroke="#22c55e"
+                    fill="#22c55e"
+                    fillOpacity={0.6}
+                    name="Success"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="partial"
+                    stackId="1"
+                    stroke="#eab308"
+                    fill="#eab308"
+                    fillOpacity={0.6}
+                    name="Partial"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="error"
+                    stackId="1"
+                    stroke="#ef4444"
+                    fill="#ef4444"
+                    fillOpacity={0.6}
+                    name="Error"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Events Chart */}
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4">
+            <h3 className="text-sm font-semibold text-white mb-4">Events Activity (7 Days)</h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={syncHistory.history} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" tick={{ fill: '#888', fontSize: 11 }} axisLine={{ stroke: '#444' }} />
+                  <YAxis tick={{ fill: '#888', fontSize: 11 }} axisLine={{ stroke: '#444' }} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid #333', borderRadius: '6px' }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="events_created" fill="#3b82f6" name="Created" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="events_updated" fill="#8b5cf6" name="Updated" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="events_deleted" fill="#f97316" name="Deleted" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="bg-zinc-900 rounded-lg border border-zinc-800 p-4 lg:col-span-2">
+            <h3 className="text-sm font-semibold text-white mb-4">7-Day Summary</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">Total Syncs</p>
+                <p className="text-lg font-semibold text-white">{syncHistory.summary.total_syncs}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Success Rate</p>
+                <p className="text-lg font-semibold text-green-400">{syncHistory.summary.success_rate.toFixed(1)}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Events Created</p>
+                <p className="text-lg font-semibold text-blue-400">{syncHistory.summary.total_created}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Events Updated</p>
+                <p className="text-lg font-semibold text-purple-400">{syncHistory.summary.total_updated}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Events Deleted</p>
+                <p className="text-lg font-semibold text-orange-400">{syncHistory.summary.total_deleted}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Avg Duration</p>
+                <p className="text-lg font-semibold text-white">{syncHistory.summary.avg_duration_secs.toFixed(1)}s</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

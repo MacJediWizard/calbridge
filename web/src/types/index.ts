@@ -69,3 +69,27 @@ export interface AuthStatus {
   authenticated: boolean;
   user?: User;
 }
+
+export interface SyncHistoryPoint {
+  date: string;
+  success: number;
+  partial: number;
+  error: number;
+  events_created: number;
+  events_updated: number;
+  events_deleted: number;
+}
+
+export interface SyncSummary {
+  total_syncs: number;
+  success_rate: number;
+  total_created: number;
+  total_updated: number;
+  total_deleted: number;
+  avg_duration_secs: number;
+}
+
+export interface SyncHistory {
+  history: SyncHistoryPoint[];
+  summary: SyncSummary;
+}

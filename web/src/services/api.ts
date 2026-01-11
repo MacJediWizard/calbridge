@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Source, SyncLog, DashboardStats, SourceFormData, AuthStatus } from '../types';
+import type { Source, SyncLog, DashboardStats, SourceFormData, AuthStatus, SyncHistory } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -21,6 +21,11 @@ export const logout = async (): Promise<void> => {
 // Dashboard
 export const getDashboardStats = async (): Promise<DashboardStats> => {
   const response = await api.get('/dashboard/stats');
+  return response.data;
+};
+
+export const getSyncHistory = async (days: number = 7): Promise<SyncHistory> => {
+  const response = await api.get('/dashboard/sync-history', { params: { days } });
   return response.data;
 };
 
