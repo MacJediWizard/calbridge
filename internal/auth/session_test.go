@@ -3,10 +3,16 @@ package auth
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
+
+func init() {
+	gin.SetMode(gin.TestMode)
+}
 
 func TestGenerateState(t *testing.T) {
 	t.Run("generates non-empty state", func(t *testing.T) {
@@ -227,8 +233,542 @@ func TestGetCurrentUser(t *testing.T) {
 
 // Helper to create a test Gin context
 func createTestGinContext(w http.ResponseWriter) (*gin.Context, *gin.Engine) {
-	gin.SetMode(gin.TestMode)
 	engine := gin.New()
 	c, _ := gin.CreateTestContext(w)
 	return c, engine
+}
+
+func TestRequireAuth(t *testing.T) {
+	sm := NewSessionManager("test-secret-key-at-least-32-chars", false, 86400, 300)
+
+	t.Run("redirects to login when no session", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/protected", nil)
+
+		middleware := RequireAuth(sm)
+		middleware(c)
+
+		if !c.IsAborted() {
+			t.Error("expected request to be aborted")
+		}
+		if w.Code != http.StatusFound {
+			t.Errorf("expected status 302, got %d", w.Code)
+		}
+		location := w.Header().Get("Location")
+		if location != "/auth/login" {
+			t.Errorf("expected redirect to /auth/login, got %q", location)
+		}
+	})
+
+	t.Run("sets redirect cookie when redirecting", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/dashboard?tab=settings", nil)
+
+		middleware := RequireAuth(sm)
+		middleware(c)
+
+		cookies := w.Result().Cookies()
+		var found bool
+		for _, cookie := range cookies {
+			if cookie.Name == "redirect_after_login" {
+				found = true
+				// Cookie value is URL-encoded
+				decoded, err := url.QueryUnescape(cookie.Value)
+				if err != nil {
+					t.Fatalf("failed to decode cookie value: %v", err)
+				}
+				if decoded != "/dashboard?tab=settings" {
+					t.Errorf("expected redirect URL in cookie, got %q (decoded: %q)", cookie.Value, decoded)
+				}
+			}
+		}
+		if !found {
+			t.Error("expected redirect_after_login cookie to be set")
+		}
+	})
+
+	t.Run("allows request with valid session", func(t *testing.T) {
+		// First set up a session
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		sm.Set(w1, r1, &SessionData{UserID: "user-123", Email: "test@example.com"})
+
+		// Now test the middleware with the session cookie
+		w2 := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w2)
+		c.Request = httptest.NewRequest(http.MethodGet, "/protected", nil)
+		for _, cookie := range w1.Result().Cookies() {
+			c.Request.AddCookie(cookie)
+		}
+
+		middleware := RequireAuth(sm)
+
+		// Simulate calling Next by checking if context was aborted
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected request to not be aborted")
+		}
+
+		// Check that session was stored in context
+		session := GetCurrentUser(c)
+		if session == nil {
+			t.Error("expected session to be stored in context")
+		}
+		if session != nil && session.UserID != "user-123" {
+			t.Errorf("expected UserID 'user-123', got %q", session.UserID)
+		}
+	})
+}
+
+func TestOptionalAuth(t *testing.T) {
+	sm := NewSessionManager("test-secret-key-at-least-32-chars", false, 86400, 300)
+
+	t.Run("continues without session", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public", nil)
+
+		middleware := OptionalAuth(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected request to not be aborted")
+		}
+
+		// Session should not be in context
+		session := GetCurrentUser(c)
+		if session != nil {
+			t.Error("expected no session in context")
+		}
+	})
+
+	t.Run("loads session when available", func(t *testing.T) {
+		// First set up a session
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		sm.Set(w1, r1, &SessionData{UserID: "user-456", Email: "user@example.com"})
+
+		// Now test the middleware with the session cookie
+		w2 := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w2)
+		c.Request = httptest.NewRequest(http.MethodGet, "/public", nil)
+		for _, cookie := range w1.Result().Cookies() {
+			c.Request.AddCookie(cookie)
+		}
+
+		middleware := OptionalAuth(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected request to not be aborted")
+		}
+
+		// Session should be in context
+		session := GetCurrentUser(c)
+		if session == nil {
+			t.Fatal("expected session in context")
+		}
+		if session.UserID != "user-456" {
+			t.Errorf("expected UserID 'user-456', got %q", session.UserID)
+		}
+	})
+}
+
+func TestValidateCSRF(t *testing.T) {
+	sm := NewSessionManager("test-secret-key-at-least-32-chars", false, 86400, 300)
+
+	t.Run("skips GET requests", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, "/api/data", nil)
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected GET request to not be aborted")
+		}
+	})
+
+	t.Run("skips HEAD requests", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodHead, "/api/data", nil)
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected HEAD request to not be aborted")
+		}
+	})
+
+	t.Run("skips OPTIONS requests", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodOptions, "/api/data", nil)
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected OPTIONS request to not be aborted")
+		}
+	})
+
+	t.Run("skips HTMX requests", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/data", nil)
+		c.Request.Header.Set("HX-Request", "true")
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected HTMX request to not be aborted")
+		}
+	})
+
+	t.Run("rejects POST without session", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/data", nil)
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if !c.IsAborted() {
+			t.Error("expected POST without session to be aborted")
+		}
+		if w.Code != http.StatusForbidden {
+			t.Errorf("expected status 403, got %d", w.Code)
+		}
+	})
+
+	t.Run("rejects POST without CSRF token", func(t *testing.T) {
+		// First set up a session
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		sm.Set(w1, r1, &SessionData{UserID: "user-123", Email: "test@example.com", CSRFToken: "valid-token"})
+
+		// Now test the middleware with the session cookie but no CSRF token
+		w2 := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w2)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/data", nil)
+		for _, cookie := range w1.Result().Cookies() {
+			c.Request.AddCookie(cookie)
+		}
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if !c.IsAborted() {
+			t.Error("expected POST without CSRF token to be aborted")
+		}
+		if w2.Code != http.StatusForbidden {
+			t.Errorf("expected status 403, got %d", w2.Code)
+		}
+	})
+
+	t.Run("rejects POST with invalid CSRF token", func(t *testing.T) {
+		// First set up a session
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		sm.Set(w1, r1, &SessionData{UserID: "user-123", Email: "test@example.com", CSRFToken: "valid-token"})
+
+		// Now test with wrong CSRF token
+		w2 := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w2)
+		formData := url.Values{}
+		formData.Set("csrf_token", "wrong-token")
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/data", strings.NewReader(formData.Encode()))
+		c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, cookie := range w1.Result().Cookies() {
+			c.Request.AddCookie(cookie)
+		}
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if !c.IsAborted() {
+			t.Error("expected POST with invalid CSRF token to be aborted")
+		}
+	})
+
+	t.Run("allows POST with valid CSRF token in form", func(t *testing.T) {
+		// First set up a session with known CSRF token
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		sessionData := &SessionData{UserID: "user-123", Email: "test@example.com"}
+		sm.Set(w1, r1, sessionData)
+		csrfToken := sessionData.CSRFToken
+
+		// Now test with valid CSRF token
+		w2 := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w2)
+		formData := url.Values{}
+		formData.Set("csrf_token", csrfToken)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/data", strings.NewReader(formData.Encode()))
+		c.Request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, cookie := range w1.Result().Cookies() {
+			c.Request.AddCookie(cookie)
+		}
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected POST with valid CSRF token to not be aborted")
+		}
+	})
+
+	t.Run("allows POST with valid CSRF token in header", func(t *testing.T) {
+		// First set up a session with known CSRF token
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		sessionData := &SessionData{UserID: "user-123", Email: "test@example.com"}
+		sm.Set(w1, r1, sessionData)
+		csrfToken := sessionData.CSRFToken
+
+		// Now test with valid CSRF token in header
+		w2 := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w2)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/data", nil)
+		c.Request.Header.Set("X-CSRF-Token", csrfToken)
+		for _, cookie := range w1.Result().Cookies() {
+			c.Request.AddCookie(cookie)
+		}
+
+		middleware := ValidateCSRF(sm)
+		middleware(c)
+
+		if c.IsAborted() {
+			t.Error("expected POST with valid CSRF token in header to not be aborted")
+		}
+	})
+}
+
+func TestSessionData(t *testing.T) {
+	t.Run("struct has expected fields", func(t *testing.T) {
+		data := SessionData{
+			UserID:    "user-123",
+			Email:     "test@example.com",
+			Name:      "Test User",
+			Picture:   "https://example.com/pic.jpg",
+			CSRFToken: "csrf-token-123",
+		}
+
+		if data.UserID != "user-123" {
+			t.Error("UserID not set correctly")
+		}
+		if data.Email != "test@example.com" {
+			t.Error("Email not set correctly")
+		}
+		if data.Name != "Test User" {
+			t.Error("Name not set correctly")
+		}
+		if data.Picture != "https://example.com/pic.jpg" {
+			t.Error("Picture not set correctly")
+		}
+		if data.CSRFToken != "csrf-token-123" {
+			t.Error("CSRFToken not set correctly")
+		}
+	})
+}
+
+func TestSessionErrors(t *testing.T) {
+	t.Run("error constants are not nil", func(t *testing.T) {
+		errors := []error{
+			ErrSessionNotFound,
+			ErrInvalidSession,
+		}
+
+		for _, err := range errors {
+			if err == nil {
+				t.Error("expected error constant to be non-nil")
+			}
+		}
+	})
+
+	t.Run("error messages are descriptive", func(t *testing.T) {
+		if ErrSessionNotFound.Error() != "session not found" {
+			t.Errorf("unexpected error message: %q", ErrSessionNotFound.Error())
+		}
+		if ErrInvalidSession.Error() != "invalid session data" {
+			t.Errorf("unexpected error message: %q", ErrInvalidSession.Error())
+		}
+	})
+}
+
+func TestOIDCErrors(t *testing.T) {
+	t.Run("OIDC error constants are not nil", func(t *testing.T) {
+		errors := []error{
+			ErrOIDCInit,
+			ErrTokenExchange,
+			ErrTokenVerify,
+			ErrMissingEmail,
+			ErrEmailNotVerified,
+		}
+
+		for _, err := range errors {
+			if err == nil {
+				t.Error("expected error constant to be non-nil")
+			}
+		}
+	})
+
+	t.Run("OIDC error messages are descriptive", func(t *testing.T) {
+		if ErrOIDCInit.Error() != "OIDC initialization failed" {
+			t.Errorf("unexpected error message: %q", ErrOIDCInit.Error())
+		}
+		if ErrTokenExchange.Error() != "token exchange failed" {
+			t.Errorf("unexpected error message: %q", ErrTokenExchange.Error())
+		}
+		if ErrTokenVerify.Error() != "token verification failed" {
+			t.Errorf("unexpected error message: %q", ErrTokenVerify.Error())
+		}
+		if ErrMissingEmail.Error() != "email claim is required" {
+			t.Errorf("unexpected error message: %q", ErrMissingEmail.Error())
+		}
+		if ErrEmailNotVerified.Error() != "email is not verified" {
+			t.Errorf("unexpected error message: %q", ErrEmailNotVerified.Error())
+		}
+	})
+}
+
+func TestOIDCClaims(t *testing.T) {
+	t.Run("struct has expected fields", func(t *testing.T) {
+		claims := OIDCClaims{
+			Subject:       "sub-123",
+			Email:         "user@example.com",
+			EmailVerified: true,
+			Name:          "Test User",
+			AvatarURL:     "https://example.com/avatar.jpg",
+		}
+
+		if claims.Subject != "sub-123" {
+			t.Error("Subject not set correctly")
+		}
+		if claims.Email != "user@example.com" {
+			t.Error("Email not set correctly")
+		}
+		if !claims.EmailVerified {
+			t.Error("EmailVerified not set correctly")
+		}
+		if claims.Name != "Test User" {
+			t.Error("Name not set correctly")
+		}
+		if claims.AvatarURL != "https://example.com/avatar.jpg" {
+			t.Error("AvatarURL not set correctly")
+		}
+	})
+}
+
+func TestGetCurrentUserEdgeCases(t *testing.T) {
+	t.Run("returns nil for wrong type in context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := createTestGinContext(w)
+
+		// Set wrong type in context
+		c.Set(ContextKeySession, "not a session data")
+
+		user := GetCurrentUser(c)
+		if user != nil {
+			t.Error("expected nil user for wrong type")
+		}
+	})
+
+	t.Run("returns nil for nil value in context", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		c, _ := createTestGinContext(w)
+
+		// Set nil in context
+		c.Set(ContextKeySession, nil)
+
+		user := GetCurrentUser(c)
+		if user != nil {
+			t.Error("expected nil user for nil value")
+		}
+	})
+}
+
+func TestNewSessionManager(t *testing.T) {
+	t.Run("creates session manager with correct settings", func(t *testing.T) {
+		sm := NewSessionManager("test-secret-32-chars-minimum-len", true, 86400, 300)
+
+		if sm == nil {
+			t.Fatal("expected non-nil session manager")
+		}
+		if sm.store == nil {
+			t.Error("expected store to be initialized")
+		}
+		if !sm.secure {
+			t.Error("expected secure to be true")
+		}
+		if sm.oauthStateMaxAge != 300 {
+			t.Errorf("expected oauthStateMaxAge 300, got %d", sm.oauthStateMaxAge)
+		}
+	})
+
+	t.Run("creates session manager with insecure settings", func(t *testing.T) {
+		sm := NewSessionManager("test-secret-32-chars-minimum-len", false, 3600, 600)
+
+		if sm.secure {
+			t.Error("expected secure to be false")
+		}
+		if sm.oauthStateMaxAge != 600 {
+			t.Errorf("expected oauthStateMaxAge 600, got %d", sm.oauthStateMaxAge)
+		}
+	})
+}
+
+func TestSessionManagerClearNonexistent(t *testing.T) {
+	sm := NewSessionManager("test-secret-key-at-least-32-chars", false, 86400, 300)
+
+	t.Run("clearing nonexistent session returns nil", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+
+		err := sm.Clear(w, r)
+		if err != nil {
+			t.Errorf("expected nil error, got %v", err)
+		}
+	})
+}
+
+func TestGetOAuthStateInvalid(t *testing.T) {
+	sm := NewSessionManager("test-secret-key-at-least-32-chars", false, 86400, 300)
+
+	t.Run("returns error for empty state", func(t *testing.T) {
+		// Set an empty state
+		w1 := httptest.NewRecorder()
+		r1 := httptest.NewRequest(http.MethodGet, "/", nil)
+		session, _ := sm.store.Get(r1, oauthStateName)
+		session.Values["state"] = ""
+		session.Save(r1, w1)
+
+		// Try to get state
+		r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+		w2 := httptest.NewRecorder()
+		for _, cookie := range w1.Result().Cookies() {
+			r2.AddCookie(cookie)
+		}
+
+		_, err := sm.GetOAuthState(w2, r2)
+		if err != ErrInvalidSession {
+			t.Errorf("expected ErrInvalidSession, got %v", err)
+		}
+	})
+}
+
+func TestContextKeySession(t *testing.T) {
+	t.Run("constant has expected value", func(t *testing.T) {
+		if ContextKeySession != "session" {
+			t.Errorf("expected ContextKeySession to be 'session', got %q", ContextKeySession)
+		}
+	})
 }
