@@ -13,7 +13,7 @@ import (
 const (
 	cleanupInterval  = 24 * time.Hour
 	logRetentionDays = 30
-	syncTimeout      = 10 * time.Minute // Maximum time for a single sync operation
+	syncTimeout      = 30 * time.Minute // Maximum time for a single sync operation
 )
 
 // Job represents a scheduled sync job.
