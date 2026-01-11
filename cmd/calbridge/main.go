@@ -110,8 +110,8 @@ func main() {
 	router.Use(web.RequestLogger())
 	router.Use(web.SecurityHeaders())
 
-	// Set templates
-	router.SetHTMLTemplate(templates)
+	// Set custom HTML renderer with layout support
+	router.HTMLRender = templates
 
 	// Setup routes
 	web.SetupRoutes(router, handlers, sessionManager)
