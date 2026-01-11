@@ -466,16 +466,19 @@ func normalizeStartTime(prop *ical.Prop) string {
 
 	// Check for TZID parameter
 	if tzidParam := prop.Params.Get("TZID"); tzidParam != "" {
-		// Try to load the timezone
+		// Try to load the timezone - first try standard IANA name
 		loc, err := time.LoadLocation(tzidParam)
 		if err != nil {
-			log.Printf("normalizeStartTime: failed to load timezone %s: %v", tzidParam, err)
-			// Try the go-ical library method as fallback
-			t, err := prop.DateTime(time.UTC)
-			if err == nil {
-				return t.UTC().Format("20060102T150405Z")
+			// Try to parse GMT offset format (e.g., "GMT-0400", "GMT+0530")
+			loc = parseGMTOffset(tzidParam)
+			if loc == nil {
+				// Try the go-ical library method as fallback
+				t, err := prop.DateTime(time.UTC)
+				if err == nil {
+					return t.UTC().Format("20060102T150405Z")
+				}
+				return value
 			}
-			return value
 		}
 
 		// Parse the datetime in the specified timezone
@@ -497,4 +500,48 @@ func normalizeStartTime(prop *ical.Prop) string {
 
 	// Fall back to the raw value
 	return value
+}
+
+// parseGMTOffset parses timezone strings like "GMT-0400", "GMT+0530", "UTC+05:30"
+// and returns a fixed timezone location.
+func parseGMTOffset(tzid string) *time.Location {
+	// Remove common prefixes
+	offset := tzid
+	for _, prefix := range []string{"GMT", "UTC", "Etc/GMT"} {
+		if strings.HasPrefix(offset, prefix) {
+			offset = strings.TrimPrefix(offset, prefix)
+			break
+		}
+	}
+
+	if offset == "" {
+		return time.UTC
+	}
+
+	// Parse the offset
+	sign := 1
+	if strings.HasPrefix(offset, "-") {
+		sign = -1
+		offset = offset[1:]
+	} else if strings.HasPrefix(offset, "+") {
+		offset = offset[1:]
+	}
+
+	// Handle formats: "0400", "04:00", "4", "04"
+	offset = strings.ReplaceAll(offset, ":", "")
+
+	var hours, minutes int
+	switch len(offset) {
+	case 1, 2:
+		fmt.Sscanf(offset, "%d", &hours)
+	case 3:
+		fmt.Sscanf(offset, "%1d%2d", &hours, &minutes)
+	case 4:
+		fmt.Sscanf(offset, "%2d%2d", &hours, &minutes)
+	default:
+		return nil
+	}
+
+	totalSeconds := sign * (hours*3600 + minutes*60)
+	return time.FixedZone(tzid, totalSeconds)
 }
