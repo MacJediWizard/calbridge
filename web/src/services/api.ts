@@ -79,6 +79,11 @@ export const deleteMalformedEvent = async (id: string): Promise<void> => {
   await api.delete(`/malformed-events/${id}`);
 };
 
+export const deleteAllMalformedEvents = async (): Promise<{ deleted: number }> => {
+  const response = await api.delete('/malformed-events');
+  return response.data;
+};
+
 // Calendar Discovery
 export const discoverCalendars = async (url: string, username: string, password: string): Promise<Calendar[]> => {
   const response = await api.post('/calendars/discover', { url, username, password });

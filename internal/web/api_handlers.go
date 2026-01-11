@@ -893,6 +893,26 @@ func (h *Handlers) APIDeleteMalformedEvent(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Malformed event deleted"})
 }
 
+// APIDeleteAllMalformedEvents deletes all malformed event records for the current user.
+func (h *Handlers) APIDeleteAllMalformedEvents(c *gin.Context) {
+	session := auth.GetCurrentUser(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	deleted, err := h.db.DeleteAllMalformedEventsForUser(session.UserID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete malformed events"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "All malformed events deleted",
+		"deleted": deleted,
+	})
+}
+
 // APIDiscoverCalendarsRequest represents the request body for discovering calendars.
 type APIDiscoverCalendarsRequest struct {
 	URL      string `json:"url"`

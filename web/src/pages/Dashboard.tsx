@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getDashboardStats, getSources, triggerSync, getSyncHistory, getMalformedEvents, deleteMalformedEvent } from '../services/api';
+import { getDashboardStats, getSources, triggerSync, getSyncHistory, getMalformedEvents, deleteMalformedEvent, deleteAllMalformedEvents } from '../services/api';
 import type { DashboardStats, Source, SyncHistory, MalformedEvent } from '../types';
 import {
   AreaChart,
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -71,6 +72,19 @@ export default function Dashboard() {
       console.error('Failed to delete malformed event:', err);
     } finally {
       setDeletingEventId(null);
+    }
+  };
+
+  const handleDeleteAllMalformedEvents = async () => {
+    if (!confirm(`Delete all ${malformedEvents.length} corrupted events? This will remove them from the database records only.`)) return;
+    setDeletingAll(true);
+    try {
+      await deleteAllMalformedEvents();
+      setMalformedEvents([]);
+    } catch (err) {
+      console.error('Failed to delete all malformed events:', err);
+    } finally {
+      setDeletingAll(false);
     }
   };
 
@@ -141,8 +155,15 @@ export default function Dashboard() {
               <h2 className="text-sm font-semibold text-red-400">
                 Corrupted Events ({malformedEvents.length})
               </h2>
+              <span className="text-xs text-gray-400">- invalid iCal format, cannot sync</span>
             </div>
-            <p className="text-xs text-gray-400">These events have invalid iCal format and cannot be synced</p>
+            <button
+              onClick={handleDeleteAllMalformedEvents}
+              disabled={deletingAll}
+              className="px-3 py-1 rounded text-xs font-medium bg-red-900/30 text-red-400 hover:bg-red-900/50 disabled:opacity-50"
+            >
+              {deletingAll ? 'Deleting...' : 'Delete All'}
+            </button>
           </div>
           <div className="divide-y divide-zinc-800">
             {malformedEvents.map((event) => (

@@ -62,6 +62,7 @@ func SetupRoutes(r *gin.Engine, h *Handlers, sm *auth.SessionManager) {
 		protectedAPI.POST("/sources/:id/sync", h.APITriggerSync)
 		protectedAPI.GET("/sources/:id/logs", h.APIGetSourceLogs)
 		protectedAPI.GET("/malformed-events", h.APIGetMalformedEvents)
+		protectedAPI.DELETE("/malformed-events", h.APIDeleteAllMalformedEvents)
 		protectedAPI.DELETE("/malformed-events/:id", h.APIDeleteMalformedEvent)
 	}
 

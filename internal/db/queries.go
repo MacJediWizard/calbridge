@@ -718,3 +718,18 @@ func (db *DB) ClearMalformedEventsForSource(sourceID string) error {
 
 	return nil
 }
+
+// DeleteAllMalformedEventsForUser removes all malformed events for a user's sources.
+// Returns the number of events deleted.
+func (db *DB) DeleteAllMalformedEventsForUser(userID string) (int64, error) {
+	query := `DELETE FROM malformed_events
+		WHERE source_id IN (SELECT id FROM sources WHERE user_id = ?)`
+
+	result, err := db.conn.Exec(query, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete all malformed events: %w", err)
+	}
+
+	deleted, _ := result.RowsAffected()
+	return deleted, nil
+}
