@@ -56,9 +56,10 @@ type APIAuthStatus struct {
 
 // APIUser represents a user in JSON format.
 type APIUser struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Name  string `json:"name"`
+	ID     string `json:"id"`
+	Email  string `json:"email"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar,omitempty"`
 }
 
 // sourceToAPI converts a db.Source to APISource.
@@ -115,9 +116,10 @@ func (h *Handlers) APIAuthStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, APIAuthStatus{
 		Authenticated: true,
 		User: &APIUser{
-			ID:    session.UserID,
-			Email: session.Email,
-			Name:  session.Name,
+			ID:     session.UserID,
+			Email:  session.Email,
+			Name:   session.Name,
+			Avatar: session.Picture,
 		},
 	})
 }

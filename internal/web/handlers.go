@@ -154,9 +154,10 @@ func (h *Handlers) Callback(c *gin.Context) {
 
 	// Create session
 	sessionData := &auth.SessionData{
-		UserID: user.ID,
-		Email:  user.Email,
-		Name:   user.Name,
+		UserID:  user.ID,
+		Email:   user.Email,
+		Name:    user.Name,
+		Picture: claims.Picture,
 	}
 	if err := h.session.Set(c.Writer, c.Request, sessionData); err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{

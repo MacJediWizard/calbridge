@@ -69,7 +69,22 @@ export default function Layout({ user, onLogout }: LayoutProps) {
             </div>
             {user && (
               <div className="flex items-center space-x-4">
-                <span className="hidden sm:block text-sm text-gray-400">{user.email}</span>
+                <div className="flex items-center space-x-2">
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name || user.email}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center">
+                      <span className="text-xs font-bold text-white">
+                        {(user.name || user.email).charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <span className="hidden sm:block text-sm text-gray-400">{user.email}</span>
+                </div>
                 <button
                   onClick={onLogout}
                   className="px-3 py-1.5 text-sm text-gray-300 hover:text-white hover:bg-zinc-800 rounded"

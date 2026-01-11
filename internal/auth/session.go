@@ -26,6 +26,7 @@ type SessionData struct {
 	UserID    string `json:"user_id"`
 	Email     string `json:"email"`
 	Name      string `json:"name"`
+	Picture   string `json:"picture"`
 	CSRFToken string `json:"csrf_token"`
 }
 
@@ -65,12 +66,15 @@ func (sm *SessionManager) Get(r *http.Request) (*SessionData, error) {
 	}
 
 	// These type assertions are intentionally unchecked - missing values default to empty string
-	var email, name, csrfToken string
+	var email, name, picture, csrfToken string
 	if v, ok := session.Values["email"].(string); ok {
 		email = v
 	}
 	if v, ok := session.Values["name"].(string); ok {
 		name = v
+	}
+	if v, ok := session.Values["picture"].(string); ok {
+		picture = v
 	}
 	if v, ok := session.Values["csrf_token"].(string); ok {
 		csrfToken = v
@@ -80,6 +84,7 @@ func (sm *SessionManager) Get(r *http.Request) (*SessionData, error) {
 		UserID:    userID,
 		Email:     email,
 		Name:      name,
+		Picture:   picture,
 		CSRFToken: csrfToken,
 	}, nil
 }
@@ -107,6 +112,7 @@ func (sm *SessionManager) Set(w http.ResponseWriter, r *http.Request, data *Sess
 	session.Values["user_id"] = data.UserID
 	session.Values["email"] = data.Email
 	session.Values["name"] = data.Name
+	session.Values["picture"] = data.Picture
 	session.Values["csrf_token"] = data.CSRFToken
 
 	return session.Save(r, w)

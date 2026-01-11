@@ -23,6 +23,7 @@ type OIDCClaims struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Name          string `json:"name"`
+	Picture       string `json:"picture"`
 }
 
 // OIDCProvider handles OIDC authentication.
