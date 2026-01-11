@@ -80,17 +80,22 @@ func (db *DB) CreateSource(source *Source) error {
 	source.UpdatedAt = time.Now().UTC()
 	source.LastSyncStatus = SyncStatusPending
 
+	// Default sync direction if not set
+	if source.SyncDirection == "" {
+		source.SyncDirection = SyncDirectionOneWay
+	}
+
 	query := `INSERT INTO sources (
 		id, user_id, name, source_type, source_url, source_username, source_password,
-		dest_url, dest_username, dest_password, sync_interval, conflict_strategy,
+		dest_url, dest_username, dest_password, sync_interval, sync_direction, conflict_strategy,
 		enabled, last_sync_status, created_at, updated_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := db.conn.Exec(query,
 		source.ID, source.UserID, source.Name, source.SourceType,
 		source.SourceURL, source.SourceUsername, source.SourcePassword,
 		source.DestURL, source.DestUsername, source.DestPassword,
-		source.SyncInterval, source.ConflictStrategy, source.Enabled,
+		source.SyncInterval, source.SyncDirection, source.ConflictStrategy, source.Enabled,
 		source.LastSyncStatus, source.CreatedAt, source.UpdatedAt,
 	)
 	if err != nil {
@@ -103,7 +108,7 @@ func (db *DB) CreateSource(source *Source) error {
 // GetSourceByID returns a source by its ID.
 func (db *DB) GetSourceByID(id string) (*Source, error) {
 	query := `SELECT id, user_id, name, source_type, source_url, source_username, source_password,
-		dest_url, dest_username, dest_password, sync_interval, conflict_strategy,
+		dest_url, dest_username, dest_password, sync_interval, sync_direction, conflict_strategy,
 		enabled, last_sync_at, last_sync_status, last_sync_message, created_at, updated_at
 		FROM sources WHERE id = ?`
 
@@ -114,7 +119,7 @@ func (db *DB) GetSourceByID(id string) (*Source, error) {
 // GetSourcesByUserID returns all sources for a user.
 func (db *DB) GetSourcesByUserID(userID string) ([]*Source, error) {
 	query := `SELECT id, user_id, name, source_type, source_url, source_username, source_password,
-		dest_url, dest_username, dest_password, sync_interval, conflict_strategy,
+		dest_url, dest_username, dest_password, sync_interval, sync_direction, conflict_strategy,
 		enabled, last_sync_at, last_sync_status, last_sync_message, created_at, updated_at
 		FROM sources WHERE user_id = ? ORDER BY name`
 
@@ -143,7 +148,7 @@ func (db *DB) GetSourcesByUserID(userID string) ([]*Source, error) {
 // GetEnabledSources returns all enabled sources.
 func (db *DB) GetEnabledSources() ([]*Source, error) {
 	query := `SELECT id, user_id, name, source_type, source_url, source_username, source_password,
-		dest_url, dest_username, dest_password, sync_interval, conflict_strategy,
+		dest_url, dest_username, dest_password, sync_interval, sync_direction, conflict_strategy,
 		enabled, last_sync_at, last_sync_status, last_sync_message, created_at, updated_at
 		FROM sources WHERE enabled = 1`
 
@@ -173,16 +178,21 @@ func (db *DB) GetEnabledSources() ([]*Source, error) {
 func (db *DB) UpdateSource(source *Source) error {
 	source.UpdatedAt = time.Now().UTC()
 
+	// Default sync direction if not set
+	if source.SyncDirection == "" {
+		source.SyncDirection = SyncDirectionOneWay
+	}
+
 	query := `UPDATE sources SET
 		name = ?, source_type = ?, source_url = ?, source_username = ?, source_password = ?,
 		dest_url = ?, dest_username = ?, dest_password = ?, sync_interval = ?,
-		conflict_strategy = ?, enabled = ?, updated_at = ?
+		sync_direction = ?, conflict_strategy = ?, enabled = ?, updated_at = ?
 		WHERE id = ?`
 
 	result, err := db.conn.Exec(query,
 		source.Name, source.SourceType, source.SourceURL, source.SourceUsername, source.SourcePassword,
 		source.DestURL, source.DestUsername, source.DestPassword, source.SyncInterval,
-		source.ConflictStrategy, source.Enabled, source.UpdatedAt, source.ID,
+		source.SyncDirection, source.ConflictStrategy, source.Enabled, source.UpdatedAt, source.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update source: %w", err)
@@ -370,12 +380,13 @@ func scanSource(row *sql.Row) (*Source, error) {
 	source := &Source{}
 	var lastSyncAt sql.NullTime
 	var lastSyncMessage sql.NullString
+	var syncDirection sql.NullString
 
 	err := row.Scan(
 		&source.ID, &source.UserID, &source.Name, &source.SourceType,
 		&source.SourceURL, &source.SourceUsername, &source.SourcePassword,
 		&source.DestURL, &source.DestUsername, &source.DestPassword,
-		&source.SyncInterval, &source.ConflictStrategy, &source.Enabled,
+		&source.SyncInterval, &syncDirection, &source.ConflictStrategy, &source.Enabled,
 		&lastSyncAt, &source.LastSyncStatus, &lastSyncMessage,
 		&source.CreatedAt, &source.UpdatedAt,
 	)
@@ -390,6 +401,10 @@ func scanSource(row *sql.Row) (*Source, error) {
 		source.LastSyncAt = &lastSyncAt.Time
 	}
 	source.LastSyncMessage = lastSyncMessage.String
+	source.SyncDirection = SyncDirection(syncDirection.String)
+	if source.SyncDirection == "" {
+		source.SyncDirection = SyncDirectionOneWay
+	}
 
 	return source, nil
 }
@@ -399,12 +414,13 @@ func scanSourceFromRows(rows *sql.Rows) (*Source, error) {
 	source := &Source{}
 	var lastSyncAt sql.NullTime
 	var lastSyncMessage sql.NullString
+	var syncDirection sql.NullString
 
 	err := rows.Scan(
 		&source.ID, &source.UserID, &source.Name, &source.SourceType,
 		&source.SourceURL, &source.SourceUsername, &source.SourcePassword,
 		&source.DestURL, &source.DestUsername, &source.DestPassword,
-		&source.SyncInterval, &source.ConflictStrategy, &source.Enabled,
+		&source.SyncInterval, &syncDirection, &source.ConflictStrategy, &source.Enabled,
 		&lastSyncAt, &source.LastSyncStatus, &lastSyncMessage,
 		&source.CreatedAt, &source.UpdatedAt,
 	)
@@ -416,6 +432,10 @@ func scanSourceFromRows(rows *sql.Rows) (*Source, error) {
 		source.LastSyncAt = &lastSyncAt.Time
 	}
 	source.LastSyncMessage = lastSyncMessage.String
+	source.SyncDirection = SyncDirection(syncDirection.String)
+	if source.SyncDirection == "" {
+		source.SyncDirection = SyncDirectionOneWay
+	}
 
 	return source, nil
 }

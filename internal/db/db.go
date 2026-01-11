@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite" // SQLite driver
 )
@@ -149,15 +150,30 @@ func (db *DB) migrate() error {
 		// Index on source_id and created_at for sync_logs
 		`CREATE INDEX IF NOT EXISTS idx_sync_logs_source_id ON sync_logs(source_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_sync_logs_created_at ON sync_logs(created_at DESC)`,
+
+		// Migration: Add sync_direction column to sources
+		`ALTER TABLE sources ADD COLUMN sync_direction TEXT NOT NULL DEFAULT 'one_way'`,
 	}
 
 	for _, migration := range migrations {
 		if _, err := db.conn.Exec(migration); err != nil {
-			return fmt.Errorf("%w: migration failed: %w", ErrDatabaseInit, err)
+			// Ignore "duplicate column" errors for ALTER TABLE migrations
+			if !isDuplicateColumnError(err) {
+				return fmt.Errorf("%w: migration failed: %w", ErrDatabaseInit, err)
+			}
 		}
 	}
 
 	return nil
+}
+
+// isDuplicateColumnError checks if the error is due to a duplicate column in ALTER TABLE.
+func isDuplicateColumnError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "duplicate column") || strings.Contains(errStr, "already exists")
 }
 
 // Ping checks the database connection.

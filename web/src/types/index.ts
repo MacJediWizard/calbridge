@@ -13,6 +13,7 @@ export interface Source {
   dest_url: string;
   dest_username: string;
   sync_interval: number;
+  sync_direction: 'one_way' | 'two_way';
   conflict_strategy: string;
   enabled: boolean;
   sync_status: string;
@@ -48,6 +49,7 @@ export interface SourceFormData {
   dest_username: string;
   dest_password: string;
   sync_interval: number;
+  sync_direction: 'one_way' | 'two_way';
   conflict_strategy: string;
 }
 

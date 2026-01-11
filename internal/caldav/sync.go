@@ -237,7 +237,14 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		destEvents = []Event{}
 	}
 
-	// Create a map of destination events by UID for comparison
+	// Create maps for comparison
+	sourceEventMap := make(map[string]Event)
+	for _, e := range sourceEvents {
+		if e.UID != "" {
+			sourceEventMap[e.UID] = e
+		}
+	}
+
 	destEventMap := make(map[string]Event)
 	for _, e := range destEvents {
 		if e.UID != "" {
@@ -250,17 +257,17 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		destEvent, exists := destEventMap[sourceEvent.UID]
 
 		if !exists {
-			// Create new event
+			// Create new event on destination
 			if err := destClient.PutEvent(ctx, destCalendarPath, &sourceEvent); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("Failed to create event: %v", err))
+				result.Errors = append(result.Errors, fmt.Sprintf("Failed to create event on dest: %v", err))
 			} else {
 				result.Created++
 			}
 		} else if sourceEvent.ETag != destEvent.ETag {
-			// Update existing event
+			// Update existing event on destination
 			sourceEvent.Path = destEvent.Path // Use destination path
 			if err := destClient.PutEvent(ctx, destCalendarPath, &sourceEvent); err != nil {
-				result.Errors = append(result.Errors, fmt.Sprintf("Failed to update event: %v", err))
+				result.Errors = append(result.Errors, fmt.Sprintf("Failed to update event on dest: %v", err))
 			} else {
 				result.Updated++
 			}
@@ -269,9 +276,38 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		delete(destEventMap, sourceEvent.UID)
 	}
 
+	// Two-way sync: sync destination events back to source
+	if source.SyncDirection == db.SyncDirectionTwoWay {
+		log.Printf("Two-way sync enabled, syncing destination events to source")
+		for _, destEvent := range destEvents {
+			sourceEvent, exists := sourceEventMap[destEvent.UID]
+
+			if !exists {
+				// Create new event on source (event only exists on destination)
+				if err := sourceClient.PutEvent(ctx, calendar.Path, &destEvent); err != nil {
+					result.Errors = append(result.Errors, fmt.Sprintf("Failed to create event on source: %v", err))
+				} else {
+					result.Created++
+				}
+			} else if destEvent.ETag != sourceEvent.ETag {
+				// For two-way sync with different ETags, use conflict strategy
+				// If dest_wins or newest_wins, update source with destination version
+				if source.ConflictStrategy == db.ConflictDestWins {
+					destEvent.Path = sourceEvent.Path
+					if err := sourceClient.PutEvent(ctx, calendar.Path, &destEvent); err != nil {
+						result.Errors = append(result.Errors, fmt.Sprintf("Failed to update event on source: %v", err))
+					} else {
+						result.Updated++
+					}
+				}
+				// For source_wins, we already updated destination above
+			}
+		}
+	}
+
 	// Events remaining in destEventMap don't exist in source
-	// Based on conflict strategy, we might delete them
-	if source.ConflictStrategy == db.ConflictSourceWins {
+	// Based on conflict strategy, we might delete them (only for one-way sync)
+	if source.SyncDirection == db.SyncDirectionOneWay && source.ConflictStrategy == db.ConflictSourceWins {
 		for _, event := range destEventMap {
 			if err := destClient.DeleteEvent(ctx, event.Path); err != nil {
 				result.Errors = append(result.Errors, fmt.Sprintf("Failed to delete orphan event: %v", err))

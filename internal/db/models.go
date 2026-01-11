@@ -23,6 +23,14 @@ const (
 	ConflictLatestWins ConflictStrategy = "latest_wins"
 )
 
+// SyncDirection represents the direction of synchronization.
+type SyncDirection string
+
+const (
+	SyncDirectionOneWay SyncDirection = "one_way" // Source -> Destination only
+	SyncDirectionTwoWay SyncDirection = "two_way" // Bidirectional sync
+)
+
 // SourceType represents the type of calendar source.
 type SourceType string
 
@@ -98,6 +106,7 @@ type Source struct {
 	DestUsername     string           `json:"dest_username"`
 	DestPassword     string           `json:"-"` // Never include in JSON
 	SyncInterval     int              `json:"sync_interval"`
+	SyncDirection    SyncDirection    `json:"sync_direction"`
 	ConflictStrategy ConflictStrategy `json:"conflict_strategy"`
 	Enabled          bool             `json:"enabled"`
 	LastSyncAt       *time.Time       `json:"last_sync_at"`

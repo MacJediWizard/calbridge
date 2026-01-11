@@ -17,6 +17,7 @@ export default function SourceAdd() {
     dest_username: '',
     dest_password: '',
     sync_interval: 3600,
+    sync_direction: 'one_way',
     conflict_strategy: 'source_wins',
   });
 
@@ -85,7 +86,7 @@ export default function SourceAdd() {
                     className="w-full"
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="source_type" className="block text-sm font-medium text-gray-300 mb-1">
                       Type
@@ -108,6 +109,17 @@ export default function SourceAdd() {
                       <option value={7200}>2 hours</option>
                       <option value={21600}>6 hours</option>
                       <option value={86400}>24 hours</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="sync_direction" className="block text-sm font-medium text-gray-300 mb-1">
+                      Sync Direction
+                    </label>
+                    <select name="sync_direction" id="sync_direction" value={form.sync_direction} onChange={handleChange} required className="w-full">
+                      <option value="one_way">One-way (Source to Dest)</option>
+                      <option value="two_way">Two-way (Bidirectional)</option>
                     </select>
                   </div>
                   <div>
