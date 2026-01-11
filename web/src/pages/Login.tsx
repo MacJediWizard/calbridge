@@ -1,6 +1,10 @@
+import { useState } from 'react';
+
 const LOGO_URL = 'https://cdn.macjediwizard.com/cdn/CalBridge%20Images/calbridge-06070e03.png';
 
 export default function Login() {
+  const [logoError, setLogoError] = useState(false);
+
   const handleLogin = () => {
     window.location.href = '/auth/login';
   };
@@ -10,15 +14,19 @@ export default function Login() {
       <div className="w-full max-w-sm px-4">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <img
-            src={LOGO_URL}
-            alt="CalBridge Logo"
-            className="w-32 h-32 mx-auto mb-6"
-            onError={(e) => {
-              console.error('Logo failed to load');
-              e.currentTarget.style.display = 'none';
-            }}
-          />
+          {!logoError && (
+            <img
+              src={LOGO_URL}
+              alt="CalBridge Logo"
+              className="w-32 h-32 mx-auto mb-6 object-contain"
+              onError={() => setLogoError(true)}
+            />
+          )}
+          {logoError && (
+            <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-red-600 flex items-center justify-center">
+              <span className="text-4xl font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>CB</span>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
             CalBridge
           </h1>

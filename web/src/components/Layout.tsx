@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import type { User } from '../types';
 
@@ -10,6 +11,7 @@ interface LayoutProps {
 
 export default function Layout({ user, onLogout }: LayoutProps) {
   const location = useLocation();
+  const [logoError, setLogoError] = useState(false);
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -24,7 +26,18 @@ export default function Layout({ user, onLogout }: LayoutProps) {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <Link to="/" className="flex items-center space-x-3">
-                <img src={LOGO_URL} alt="CalBridge" className="w-10 h-10" />
+                {!logoError ? (
+                  <img
+                    src={LOGO_URL}
+                    alt="CalBridge"
+                    className="w-10 h-10 object-contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                    <span className="text-sm font-bold text-white">CB</span>
+                  </div>
+                )}
                 <span className="text-lg font-bold text-white" style={{ fontFamily: 'Orbitron, monospace' }}>
                   CalBridge
                 </span>
