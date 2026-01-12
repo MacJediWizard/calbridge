@@ -41,6 +41,8 @@ const (
 	SourceTypeFastmail  SourceType = "fastmail"
 	SourceTypeNextcloud SourceType = "nextcloud"
 	SourceTypeCustom    SourceType = "custom"
+	SourceTypeCalDAV    SourceType = "caldav"
+	SourceTypeOutlook   SourceType = "outlook"
 )
 
 // ValidSourceTypes contains all valid source type values.
@@ -50,6 +52,8 @@ var ValidSourceTypes = map[SourceType]bool{
 	SourceTypeFastmail:  true,
 	SourceTypeNextcloud: true,
 	SourceTypeCustom:    true,
+	SourceTypeCalDAV:    true,
+	SourceTypeOutlook:   true,
 }
 
 // IsValid returns true if the source type is a known valid value.
@@ -119,6 +123,18 @@ var SourcePresets = map[SourceType]SourcePreset{
 		Type:        SourceTypeCustom,
 		BaseURL:     "",
 		Description: "Custom CalDAV server",
+	},
+	SourceTypeCalDAV: {
+		Name:        "CalDAV",
+		Type:        SourceTypeCalDAV,
+		BaseURL:     "",
+		Description: "Generic CalDAV server",
+	},
+	SourceTypeOutlook: {
+		Name:        "Outlook",
+		Type:        SourceTypeOutlook,
+		BaseURL:     "https://outlook.office365.com/caldav/",
+		Description: "Microsoft Outlook Calendar",
 	},
 }
 

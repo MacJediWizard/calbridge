@@ -29,8 +29,11 @@
                         <label for="source_type" class="block text-sm font-medium text-gray-300 mb-1">Type</label>
                         <select name="source_type" id="source_type" required class="w-full rounded py-2 px-3 bg-gray-900 border border-gray-600 text-white focus:border-primary focus:outline-none">
                             <option value="caldav" {{if eq .Form.SourceType "caldav"}}selected{{end}}>CalDAV</option>
+                            <option value="icloud" {{if eq .Form.SourceType "icloud"}}selected{{end}}>iCloud</option>
                             <option value="google" {{if eq .Form.SourceType "google"}}selected{{end}}>Google</option>
                             <option value="outlook" {{if eq .Form.SourceType "outlook"}}selected{{end}}>Outlook</option>
+                            <option value="fastmail" {{if eq .Form.SourceType "fastmail"}}selected{{end}}>Fastmail</option>
+                            <option value="nextcloud" {{if eq .Form.SourceType "nextcloud"}}selected{{end}}>Nextcloud</option>
                         </select>
                     </div>
                     <div>
