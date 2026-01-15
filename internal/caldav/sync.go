@@ -319,6 +319,11 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		se.tracker.UpdateProgress(source.ID, result.Created, result.Updated, result.Deleted, result.Skipped, result.EventsProcessed)
 	}
 
+	// Helper to update status message during loading phases
+	updateStatus := func(status string) {
+		se.tracker.UpdateCalendar(source.ID, fmt.Sprintf("%s (%s)", calendar.Name, status), calendarIndex)
+	}
+
 	// Create collector for malformed events from source
 	malformedCollector := NewMalformedEventCollector()
 
@@ -328,11 +333,13 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	}
 
 	// Get all events from source
+	updateStatus("fetching source events")
 	sourceEvents, err := sourceClient.GetEvents(ctx, calendar.Path, malformedCollector)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to get source events: %v", err))
 		return result
 	}
+	updateStatus(fmt.Sprintf("loaded %d source events", len(sourceEvents)))
 
 	// Store any malformed events found
 	for _, mf := range malformedCollector.GetEvents() {
@@ -366,12 +373,14 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	log.Printf("Using destination calendar path: %s", destCalendarPath)
 
 	// Get all events from destination (no collector needed - we only track source issues)
+	updateStatus("fetching destination events")
 	destEvents, err := destClient.GetEvents(ctx, destCalendarPath, nil)
 	if err != nil {
 		log.Printf("Failed to get destination events (path: %s): %v", destCalendarPath, err)
 		destEvents = []Event{}
 	}
 	log.Printf("Fetched %d events from destination calendar", len(destEvents))
+	updateStatus(fmt.Sprintf("comparing %d vs %d events", len(sourceEvents), len(destEvents)))
 
 	// Get previously synced events for deletion detection
 	previouslySynced, err := se.db.GetSyncedEvents(source.ID, calendar.Path)
@@ -415,6 +424,9 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 
 	// Track UIDs that exist in current sync (for updating synced_events table)
 	currentUIDs := make(map[string]bool)
+
+	// Update status to show processing phase
+	updateStatus(fmt.Sprintf("processing %d events", len(sourceEvents)))
 
 	// Handle deletions first (for two-way sync)
 	// SAFETY: Only delete from source if the event was synced at least one sync cycle ago
