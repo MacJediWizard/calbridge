@@ -221,7 +221,7 @@ func (c *Client) getEventsViaPropfind(ctx context.Context, calendarPath string, 
 	return c.getEventsViaList(ctx, calendarPath, collector)
 }
 
-// getEventsViaList lists calendar contents and fetches each event individually.
+// getEventsViaList lists calendar contents and fetches events using batch MULTIGET.
 func (c *Client) getEventsViaList(ctx context.Context, calendarPath string, collector *MalformedEventCollector) ([]Event, error) {
 	// Build the full URL - calendarPath might be absolute or relative
 	fullURL := c.buildURL(calendarPath)
@@ -262,15 +262,117 @@ func (c *Client) getEventsViaList(ctx context.Context, calendarPath string, coll
 	eventPaths := parseEventPaths(body, calendarPath)
 	log.Printf("Parsed %d event paths from PROPFIND response (calendarPath=%s)", len(eventPaths), calendarPath)
 
-	// Fetch each event individually
+	if len(eventPaths) == 0 {
+		return []Event{}, nil
+	}
+
+	// Use batch MULTIGET to fetch events efficiently (50 events per batch)
+	const batchSize = 50
 	events := make([]Event, 0, len(eventPaths))
 	skippedMalformed := 0
 	skippedEmpty := 0
-	for _, path := range eventPaths {
+	total := len(eventPaths)
+
+	for batchStart := 0; batchStart < total; batchStart += batchSize {
+		batchEnd := batchStart + batchSize
+		if batchEnd > total {
+			batchEnd = total
+		}
+		batchPaths := eventPaths[batchStart:batchEnd]
+
+		log.Printf("Fetching events batch: %d-%d of %d (%.0f%%)", batchStart+1, batchEnd, total, float64(batchEnd)/float64(total)*100)
+
+		// Try MULTIGET for this batch
+		batchEvents, malformed, empty, err := c.getEventsBatch(ctx, calendarPath, batchPaths, collector)
+		if err != nil {
+			// If MULTIGET fails, fall back to individual fetches for this batch
+			log.Printf("MULTIGET failed, falling back to individual fetches: %v", err)
+			batchEvents, malformed, empty = c.getEventsIndividually(ctx, batchPaths, collector)
+		}
+
+		events = append(events, batchEvents...)
+		skippedMalformed += malformed
+		skippedEmpty += empty
+	}
+
+	log.Printf("Fetched %d events complete", len(events))
+	if skippedMalformed > 0 {
+		log.Printf("Skipped %d malformed events (corrupted at source)", skippedMalformed)
+	}
+	if skippedEmpty > 0 {
+		log.Printf("Skipped %d empty events (no iCalendar data)", skippedEmpty)
+	}
+
+	return events, nil
+}
+
+// getEventsBatch fetches a batch of events using MULTIGET.
+func (c *Client) getEventsBatch(ctx context.Context, calendarPath string, paths []string, collector *MalformedEventCollector) ([]Event, int, int, error) {
+	multiGet := &caldav.CalendarMultiGet{
+		Paths: paths,
+		CompRequest: caldav.CalendarCompRequest{
+			Name: "VCALENDAR",
+			Comps: []caldav.CalendarCompRequest{
+				{Name: "VEVENT"},
+			},
+		},
+	}
+
+	objects, err := c.caldavClient.MultiGetCalendar(ctx, calendarPath, multiGet)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("MULTIGET failed: %w", err)
+	}
+
+	events := make([]Event, 0, len(objects))
+	skippedMalformed := 0
+	skippedEmpty := 0
+
+	for _, obj := range objects {
+		event := Event{
+			Path: obj.Path,
+			ETag: obj.ETag,
+		}
+
+		if obj.Data != nil {
+			event.Data = encodeCalendar(obj.Data)
+
+			for _, evt := range obj.Data.Events() {
+				if uid, err := evt.Props.Text(ical.PropUID); err == nil {
+					event.UID = uid
+				}
+				if summary, err := evt.Props.Text(ical.PropSummary); err == nil {
+					event.Summary = summary
+				}
+				if dtstart := evt.Props.Get(ical.PropDateTimeStart); dtstart != nil {
+					event.StartTime = normalizeStartTime(dtstart)
+				}
+			}
+		}
+
+		if event.Data == "" {
+			if collector != nil {
+				collector.Add(obj.Path, "empty iCalendar data - event may be corrupted or deleted")
+			}
+			skippedEmpty++
+			continue
+		}
+
+		events = append(events, event)
+	}
+
+	return events, skippedMalformed, skippedEmpty, nil
+}
+
+// getEventsIndividually fetches events one by one (fallback for servers that don't support MULTIGET).
+func (c *Client) getEventsIndividually(ctx context.Context, paths []string, collector *MalformedEventCollector) ([]Event, int, int) {
+	events := make([]Event, 0, len(paths))
+	skippedMalformed := 0
+	skippedEmpty := 0
+
+	for _, path := range paths {
 		event, err := c.GetEvent(ctx, path)
 		if err != nil {
 			if IsMalformedError(err) {
-				// Record malformed event if collector is provided
 				if collector != nil {
 					collector.Add(path, err.Error())
 				}
@@ -280,7 +382,6 @@ func (c *Client) getEventsViaList(ctx context.Context, calendarPath string, coll
 			log.Printf("Failed to fetch event %s: %v", path, err)
 			continue
 		}
-		// Check for empty event data (corrupted or deleted events)
 		if event.Data == "" {
 			if collector != nil {
 				collector.Add(path, "empty iCalendar data - event may be corrupted or deleted")
@@ -290,14 +391,8 @@ func (c *Client) getEventsViaList(ctx context.Context, calendarPath string, coll
 		}
 		events = append(events, *event)
 	}
-	if skippedMalformed > 0 {
-		log.Printf("Skipped %d malformed events (corrupted at source)", skippedMalformed)
-	}
-	if skippedEmpty > 0 {
-		log.Printf("Skipped %d empty events (no iCalendar data)", skippedEmpty)
-	}
 
-	return events, nil
+	return events, skippedMalformed, skippedEmpty
 }
 
 // objectsToEvents converts CalDAV objects to Events.
