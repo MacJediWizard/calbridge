@@ -210,20 +210,39 @@ func (s *Scheduler) RemoveJob(sourceID string) {
 	}
 }
 
-// UpdateJobInterval updates the interval for an existing job.
+// UpdateJobInterval updates the interval for an existing job by stopping and restarting it.
 func (s *Scheduler) UpdateJobInterval(sourceID string, interval time.Duration) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
-	if job, exists := s.jobs[sourceID]; exists {
-		// Stop old ticker and create new one
-		job.ticker.Stop()
-		job.interval = interval
-		job.ticker = time.NewTicker(interval)
-		// Update nextSyncAt based on new interval from now
-		job.nextSyncAt = time.Now().Add(interval)
+	existingJob, exists := s.jobs[sourceID]
+	if !exists {
+		s.mu.Unlock()
 		log.Printf("Updated sync interval for source %s to %v", sourceID, interval)
+		return
 	}
+
+	// Stop the existing job goroutine and ticker
+	close(existingJob.stopCh)
+	existingJob.ticker.Stop()
+	delete(s.jobs, sourceID)
+
+	// Create new job with updated interval
+	job := &Job{
+		sourceID:   sourceID,
+		interval:   interval,
+		ticker:     time.NewTicker(interval),
+		stopCh:     make(chan struct{}),
+		nextSyncAt: time.Now().Add(interval), // First tick after interval
+	}
+
+	s.jobs[sourceID] = job
+	s.mu.Unlock()
+
+	// Start job goroutine (don't run immediately - next tick will be at interval from now)
+	s.wg.Add(1)
+	go s.runJobFromTicker(job)
+
+	log.Printf("Updated sync interval for source %s to %v", sourceID, interval)
 }
 
 // TriggerSync manually triggers a sync for a source.
@@ -249,6 +268,24 @@ func (s *Scheduler) runJob(job *Job) {
 	// Run immediately on start
 	s.executeSync(job.sourceID)
 	s.updateNextSyncAt(job.sourceID)
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-job.stopCh:
+			return
+		case <-job.ticker.C:
+			s.executeSync(job.sourceID)
+			s.updateNextSyncAt(job.sourceID)
+		}
+	}
+}
+
+// runJobFromTicker runs the sync job loop, starting from the next ticker tick.
+// Used when updating interval - does NOT run immediately.
+func (s *Scheduler) runJobFromTicker(job *Job) {
+	defer s.wg.Done()
 
 	for {
 		select {
