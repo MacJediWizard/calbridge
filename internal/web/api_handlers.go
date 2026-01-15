@@ -110,6 +110,8 @@ type APISource struct {
 	Enabled           bool     `json:"enabled"`
 	SyncStatus        string   `json:"sync_status"`
 	LastSyncAt        *string  `json:"last_sync_at"`
+	NextSyncAt        *string  `json:"next_sync_at"`
+	IsStale           bool     `json:"is_stale"`
 	CreatedAt         string   `json:"created_at"`
 	UpdatedAt         string   `json:"updated_at"`
 }
@@ -187,7 +189,7 @@ type APIUser struct {
 	Avatar string `json:"avatar,omitempty"`
 }
 
-// sourceToAPI converts a db.Source to APISource.
+// sourceToAPI converts a db.Source to APISource (base conversion without scheduler info).
 func sourceToAPI(s *db.Source) *APISource {
 	api := &APISource{
 		ID:                s.ID,
@@ -214,6 +216,25 @@ func sourceToAPI(s *db.Source) *APISource {
 	if api.SelectedCalendars == nil {
 		api.SelectedCalendars = []string{}
 	}
+	return api
+}
+
+// sourceToAPIWithScheduler converts a db.Source to APISource with scheduler information.
+func (h *Handlers) sourceToAPIWithScheduler(s *db.Source) *APISource {
+	api := sourceToAPI(s)
+
+	// Add next sync time if job exists and source is enabled
+	if s.Enabled {
+		nextSync := h.scheduler.GetNextSyncAt(s.ID)
+		if !nextSync.IsZero() {
+			ts := nextSync.Format(time.RFC3339)
+			api.NextSyncAt = &ts
+		}
+	}
+
+	// Check if source is stale
+	api.IsStale = h.scheduler.IsSourceStale(s)
+
 	return api
 }
 
@@ -428,7 +449,7 @@ func (h *Handlers) APIListSources(c *gin.Context) {
 
 	apiSources := make([]*APISource, len(sources))
 	for i, s := range sources {
-		apiSources[i] = sourceToAPI(s)
+		apiSources[i] = h.sourceToAPIWithScheduler(s)
 	}
 
 	c.JSON(http.StatusOK, apiSources)
@@ -450,7 +471,7 @@ func (h *Handlers) APIGetSource(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, sourceToAPI(source))
+	c.JSON(http.StatusOK, h.sourceToAPIWithScheduler(source))
 }
 
 // APICreateSourceRequest represents the request body for creating a source.
@@ -563,7 +584,7 @@ func (h *Handlers) APICreateSource(c *gin.Context) {
 
 	h.scheduler.AddJob(source.ID, time.Duration(source.SyncInterval)*time.Second)
 
-	c.JSON(http.StatusCreated, sourceToAPI(source))
+	c.JSON(http.StatusCreated, h.sourceToAPIWithScheduler(source))
 }
 
 // APIUpdateSourceRequest represents the request body for updating a source.
@@ -660,7 +681,7 @@ func (h *Handlers) APIUpdateSource(c *gin.Context) {
 
 	h.scheduler.UpdateJobInterval(source.ID, time.Duration(source.SyncInterval)*time.Second)
 
-	c.JSON(http.StatusOK, sourceToAPI(source))
+	c.JSON(http.StatusOK, h.sourceToAPIWithScheduler(source))
 }
 
 // APIDeleteSource deletes a source.
@@ -717,7 +738,7 @@ func (h *Handlers) APIToggleSource(c *gin.Context) {
 		h.scheduler.RemoveJob(source.ID)
 	}
 
-	c.JSON(http.StatusOK, sourceToAPI(source))
+	c.JSON(http.StatusOK, h.sourceToAPIWithScheduler(source))
 }
 
 // APITriggerSync triggers a sync for a source.

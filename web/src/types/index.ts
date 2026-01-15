@@ -20,6 +20,8 @@ export interface Source {
   enabled: boolean;
   sync_status: string;
   last_sync_at: string | null;
+  next_sync_at: string | null;
+  is_stale: boolean;
   created_at: string;
   updated_at: string;
 }

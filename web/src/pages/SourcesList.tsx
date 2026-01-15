@@ -143,29 +143,39 @@ export default function SourcesList() {
                           />
                         </button>
                         {source.enabled && (
-                          <span
-                            className={`text-xs ${
-                              source.sync_status === 'success'
-                                ? 'text-green-400'
+                          <>
+                            <span
+                              className={`text-xs ${
+                                source.sync_status === 'success'
+                                  ? 'text-green-400'
+                                  : source.sync_status === 'partial'
+                                  ? 'text-yellow-400'
+                                  : source.sync_status === 'error'
+                                  ? 'text-red-400'
+                                  : source.sync_status === 'running'
+                                  ? 'text-blue-400'
+                                  : 'text-gray-500'
+                              }`}
+                            >
+                              {source.sync_status === 'success'
+                                ? 'OK'
                                 : source.sync_status === 'partial'
-                                ? 'text-yellow-400'
+                                ? 'Warn'
                                 : source.sync_status === 'error'
-                                ? 'text-red-400'
+                                ? 'Err'
                                 : source.sync_status === 'running'
-                                ? 'text-blue-400'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            {source.sync_status === 'success'
-                              ? 'OK'
-                              : source.sync_status === 'partial'
-                              ? 'Warn'
-                              : source.sync_status === 'error'
-                              ? 'Err'
-                              : source.sync_status === 'running'
-                              ? '...'
-                              : '-'}
-                          </span>
+                                ? '...'
+                                : '-'}
+                            </span>
+                            {source.is_stale && (
+                              <span
+                                className="text-xs text-orange-400"
+                                title="Source hasn't synced within expected interval"
+                              >
+                                Stale
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

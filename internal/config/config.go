@@ -38,6 +38,27 @@ type Config struct {
 	CalDAV       CalDAVConfig
 	RateLimiting RateLimitConfig
 	Sync         SyncConfig
+	Alerts       AlertConfig
+}
+
+// AlertConfig holds alerting configuration.
+type AlertConfig struct {
+	// Webhook settings
+	WebhookEnabled bool
+	WebhookURL     string
+
+	// Email settings
+	EmailEnabled bool
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPTo       []string
+	SMTPTLS      bool
+
+	// Cooldown period in minutes (default: 60)
+	CooldownMinutes int
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -171,6 +192,35 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("%w: MAX_SYNC_INTERVAL: %w", ErrInvalidConfig, err)
 	}
 	cfg.Sync.MaxInterval = maxInterval
+
+	// Alert configuration (all optional)
+	cfg.Alerts.WebhookEnabled = getEnv("ALERT_WEBHOOK_ENABLED", "") == "true"
+	cfg.Alerts.WebhookURL = getEnv("ALERT_WEBHOOK_URL", "")
+
+	cfg.Alerts.EmailEnabled = getEnv("ALERT_EMAIL_ENABLED", "") == "true"
+	cfg.Alerts.SMTPHost = getEnv("ALERT_SMTP_HOST", "")
+	smtpPort, err := getEnvInt("ALERT_SMTP_PORT", 587)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ALERT_SMTP_PORT: %w", ErrInvalidConfig, err)
+	}
+	cfg.Alerts.SMTPPort = smtpPort
+	cfg.Alerts.SMTPUsername = getEnv("ALERT_SMTP_USERNAME", "")
+	cfg.Alerts.SMTPPassword = getEnv("ALERT_SMTP_PASSWORD", "")
+	cfg.Alerts.SMTPFrom = getEnv("ALERT_SMTP_FROM", "")
+	smtpTo := getEnv("ALERT_SMTP_TO", "")
+	if smtpTo != "" {
+		cfg.Alerts.SMTPTo = strings.Split(smtpTo, ",")
+		for i, addr := range cfg.Alerts.SMTPTo {
+			cfg.Alerts.SMTPTo[i] = strings.TrimSpace(addr)
+		}
+	}
+	cfg.Alerts.SMTPTLS = getEnv("ALERT_SMTP_TLS", "") == "true"
+
+	cooldownMinutes, err := getEnvInt("ALERT_COOLDOWN_MINUTES", 60)
+	if err != nil {
+		return nil, fmt.Errorf("%w: ALERT_COOLDOWN_MINUTES: %w", ErrInvalidConfig, err)
+	}
+	cfg.Alerts.CooldownMinutes = cooldownMinutes
 
 	// Check for missing required configuration
 	missing := cfg.getMissingRequired()

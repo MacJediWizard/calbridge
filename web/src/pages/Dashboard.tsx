@@ -124,7 +124,7 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-800">
             <p className="text-xs text-gray-400 uppercase tracking-wide">Total Sources</p>
             <p className="mt-1 text-2xl font-bold text-white">{stats.total_sources}</p>
@@ -141,6 +141,12 @@ export default function Dashboard() {
             <p className="text-xs text-gray-400 uppercase tracking-wide">Failed</p>
             <p className={`mt-1 text-2xl font-bold ${stats.failed_syncs > 0 ? 'text-red-400' : 'text-gray-500'}`}>
               {stats.failed_syncs}
+            </p>
+          </div>
+          <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-800">
+            <p className="text-xs text-gray-400 uppercase tracking-wide">Stale</p>
+            <p className={`mt-1 text-2xl font-bold ${sources.filter(s => s.is_stale && s.enabled).length > 0 ? 'text-orange-400' : 'text-gray-500'}`}>
+              {sources.filter(s => s.is_stale && s.enabled).length}
             </p>
           </div>
         </div>
@@ -308,6 +314,7 @@ export default function Dashboard() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Last Sync</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Next Sync</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -320,37 +327,50 @@ export default function Dashboard() {
                     </td>
                     <td className="px-4 py-3 text-gray-400">{source.source_type}</td>
                     <td className="px-4 py-3">
-                      {source.enabled ? (
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            source.sync_status === 'success'
-                              ? 'bg-green-900/50 text-green-400'
+                      <div className="flex items-center space-x-2">
+                        {source.enabled ? (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              source.sync_status === 'success'
+                                ? 'bg-green-900/50 text-green-400'
+                                : source.sync_status === 'partial'
+                                ? 'bg-yellow-900/50 text-yellow-400'
+                                : source.sync_status === 'error'
+                                ? 'bg-red-900/50 text-red-400'
+                                : source.sync_status === 'running'
+                                ? 'bg-blue-900/50 text-blue-400'
+                                : 'bg-zinc-800 text-gray-400'
+                            }`}
+                          >
+                            {source.sync_status === 'success'
+                              ? 'Synced'
                               : source.sync_status === 'partial'
-                              ? 'bg-yellow-900/50 text-yellow-400'
+                              ? 'Partial'
                               : source.sync_status === 'error'
-                              ? 'bg-red-900/50 text-red-400'
+                              ? 'Error'
                               : source.sync_status === 'running'
-                              ? 'bg-blue-900/50 text-blue-400'
-                              : 'bg-zinc-800 text-gray-400'
-                          }`}
-                        >
-                          {source.sync_status === 'success'
-                            ? 'Synced'
-                            : source.sync_status === 'partial'
-                            ? 'Partial'
-                            : source.sync_status === 'error'
-                            ? 'Error'
-                            : source.sync_status === 'running'
-                            ? 'Running'
-                            : 'Pending'}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-gray-500">
-                          Disabled
-                        </span>
-                      )}
+                              ? 'Running'
+                              : 'Pending'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-gray-500">
+                            Disabled
+                          </span>
+                        )}
+                        {source.is_stale && source.enabled && (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-900/50 text-orange-400"
+                            title="Source hasn't synced within expected interval"
+                          >
+                            Stale
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-gray-400">{formatDate(source.last_sync_at)}</td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {source.enabled ? formatDate(source.next_sync_at) : '-'}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center space-x-3">
                         <button

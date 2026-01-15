@@ -46,7 +46,7 @@ func setupTestHandlers(t *testing.T) *testHandlers {
 	}
 
 	// Create a scheduler with nil dependencies (safe for testing)
-	sched := scheduler.New(nil, nil)
+	sched := scheduler.New(nil, nil, nil)
 
 	handlers := &Handlers{
 		db:        database,

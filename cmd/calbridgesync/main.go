@@ -18,6 +18,7 @@ import (
 	"github.com/macjediwizard/calbridgesync/internal/crypto"
 	"github.com/macjediwizard/calbridgesync/internal/db"
 	"github.com/macjediwizard/calbridgesync/internal/health"
+	"github.com/macjediwizard/calbridgesync/internal/notify"
 	"github.com/macjediwizard/calbridgesync/internal/scheduler"
 	"github.com/macjediwizard/calbridgesync/internal/web"
 )
@@ -85,8 +86,37 @@ func main() {
 	// Initialize sync engine
 	syncEngine := caldav.NewSyncEngine(database, encryptor)
 
+	// Initialize notifier for alerts
+	notifyCfg := &notify.Config{
+		WebhookEnabled: cfg.Alerts.WebhookEnabled,
+		WebhookURL:     cfg.Alerts.WebhookURL,
+		EmailEnabled:   cfg.Alerts.EmailEnabled,
+		SMTPHost:       cfg.Alerts.SMTPHost,
+		SMTPPort:       cfg.Alerts.SMTPPort,
+		SMTPUsername:   cfg.Alerts.SMTPUsername,
+		SMTPPassword:   cfg.Alerts.SMTPPassword,
+		SMTPFrom:       cfg.Alerts.SMTPFrom,
+		SMTPTo:         cfg.Alerts.SMTPTo,
+		SMTPTLS:        cfg.Alerts.SMTPTLS,
+		CooldownPeriod: time.Duration(cfg.Alerts.CooldownMinutes) * time.Minute,
+	}
+
+	// Validate notification config if any alerts are enabled
+	if notifyCfg.WebhookEnabled || notifyCfg.EmailEnabled {
+		if err := notify.ValidateConfig(notifyCfg); err != nil {
+			log.Fatalf("Invalid alert configuration: %v", err)
+		}
+	}
+
+	notifier := notify.New(notifyCfg)
+
+	if notifier.IsEnabled() {
+		log.Printf("Alert notifications enabled (webhook: %v, email: %v, cooldown: %d min)",
+			cfg.Alerts.WebhookEnabled, cfg.Alerts.EmailEnabled, cfg.Alerts.CooldownMinutes)
+	}
+
 	// Initialize scheduler
-	sched := scheduler.New(database, syncEngine)
+	sched := scheduler.New(database, syncEngine, notifier)
 
 	// Initialize health checker
 	healthChecker := health.NewChecker(database, cfg.OIDC.Issuer, cfg.CalDAV.DefaultDestURL)

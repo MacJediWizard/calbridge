@@ -10,7 +10,7 @@ func TestNew(t *testing.T) {
 	t.Run("creates scheduler with nil dependencies", func(t *testing.T) {
 		// Note: In production, db and syncEngine would be required,
 		// but we can create the scheduler without them for testing structure
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		if sched == nil {
 			t.Fatal("expected non-nil scheduler")
@@ -36,7 +36,7 @@ func TestNew(t *testing.T) {
 
 func TestGetJobCount(t *testing.T) {
 	t.Run("returns zero for new scheduler", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		count := sched.GetJobCount()
 		if count != 0 {
@@ -84,7 +84,7 @@ func TestSchedulerConstants(t *testing.T) {
 
 func TestSchedulerStartStop(t *testing.T) {
 	t.Run("start sets started flag", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Note: Start() will fail without a real DB, but we can test
 		// the started flag protection by checking the initial state
@@ -94,7 +94,7 @@ func TestSchedulerStartStop(t *testing.T) {
 	})
 
 	t.Run("stop is idempotent", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Stop should not panic when scheduler hasn't started
 		sched.Stop()
@@ -104,7 +104,7 @@ func TestSchedulerStartStop(t *testing.T) {
 
 func TestGetSyncLock(t *testing.T) {
 	t.Run("creates lock for new source", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		lock := sched.getSyncLock("source-1")
 		if lock == nil {
@@ -119,7 +119,7 @@ func TestGetSyncLock(t *testing.T) {
 	})
 
 	t.Run("creates different locks for different sources", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		lock1 := sched.getSyncLock("source-1")
 		lock2 := sched.getSyncLock("source-2")
@@ -132,7 +132,7 @@ func TestGetSyncLock(t *testing.T) {
 
 func TestRemoveJob(t *testing.T) {
 	t.Run("remove non-existent job is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Should not panic
 		sched.RemoveJob("non-existent-source")
@@ -141,7 +141,7 @@ func TestRemoveJob(t *testing.T) {
 
 func TestUpdateJobInterval(t *testing.T) {
 	t.Run("update non-existent job is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Should not panic
 		sched.UpdateJobInterval("non-existent-source", 10*time.Minute)
@@ -166,7 +166,7 @@ func addJobDirectly(s *Scheduler, sourceID string, interval time.Duration) {
 
 func TestAddJob(t *testing.T) {
 	t.Run("adds job to jobs map", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		initialCount := sched.GetJobCount()
 		if initialCount != 0 {
@@ -183,7 +183,7 @@ func TestAddJob(t *testing.T) {
 	})
 
 	t.Run("adds multiple jobs", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 		addJobDirectly(sched, "source-2", 2*time.Hour)
@@ -196,7 +196,7 @@ func TestAddJob(t *testing.T) {
 	})
 
 	t.Run("replaces existing job with same source ID", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 
@@ -221,7 +221,7 @@ func TestAddJob(t *testing.T) {
 
 func TestRemoveJobWithExistingJob(t *testing.T) {
 	t.Run("removes existing job and decrements count", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 
@@ -239,7 +239,7 @@ func TestRemoveJobWithExistingJob(t *testing.T) {
 	})
 
 	t.Run("removes one job leaves others", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 		addJobDirectly(sched, "source-2", 1*time.Hour)
@@ -256,7 +256,7 @@ func TestRemoveJobWithExistingJob(t *testing.T) {
 
 func TestUpdateJobIntervalWithExistingJob(t *testing.T) {
 	t.Run("updates interval for existing job", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 
@@ -285,7 +285,7 @@ func TestUpdateJobIntervalWithExistingJob(t *testing.T) {
 
 func TestSchedulerStopWithJobs(t *testing.T) {
 	t.Run("stop clears all jobs", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 		addJobDirectly(sched, "source-2", 1*time.Hour)
@@ -304,7 +304,7 @@ func TestSchedulerStopWithJobs(t *testing.T) {
 	})
 
 	t.Run("stop sets started to false", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		sched.mu.Lock()
 		sched.started = true
@@ -328,13 +328,13 @@ func TestTriggerSync(t *testing.T) {
 		// but it should not panic - the goroutine handles the error
 		// We can't easily test this without a mock, so just verify
 		// the scheduler can be created (method is already tested via compilation)
-		_ = New(nil, nil)
+		_ = New(nil, nil, nil)
 	})
 }
 
 func TestConcurrentAccess(t *testing.T) {
 	t.Run("concurrent add and remove is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		var wg sync.WaitGroup
 
@@ -374,7 +374,7 @@ func TestConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("concurrent getSyncLock is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		var wg sync.WaitGroup
 		locks := make([]*sync.Mutex, 100)
@@ -400,7 +400,7 @@ func TestConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("concurrent GetJobCount is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 
@@ -426,7 +426,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 func TestJobFields(t *testing.T) {
 	t.Run("job ticker and stopCh are set after addJobDirectly", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		addJobDirectly(sched, "source-1", 1*time.Hour)
 
@@ -458,7 +458,7 @@ func TestJobFields(t *testing.T) {
 
 func TestSchedulerFields(t *testing.T) {
 	t.Run("scheduler has expected fields after creation", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		if sched.jobs == nil {
 			t.Error("expected jobs to be non-nil")
@@ -484,7 +484,7 @@ func TestSchedulerFields(t *testing.T) {
 
 func TestStartIdempotent(t *testing.T) {
 	t.Run("calling start multiple times is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Manually set started to true to simulate already started
 		sched.mu.Lock()
@@ -501,7 +501,7 @@ func TestStartIdempotent(t *testing.T) {
 
 func TestStopIdempotent(t *testing.T) {
 	t.Run("calling stop when not started is safe", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Should not panic
 		sched.Stop()
@@ -512,7 +512,7 @@ func TestStopIdempotent(t *testing.T) {
 
 func TestJobIntervalTypes(t *testing.T) {
 	t.Run("various interval durations are accepted", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		testCases := []struct {
 			name     string
@@ -547,7 +547,7 @@ func TestJobIntervalTypes(t *testing.T) {
 
 func TestContextCancellation(t *testing.T) {
 	t.Run("cancel function is available", func(t *testing.T) {
-		sched := New(nil, nil)
+		sched := New(nil, nil, nil)
 
 		// Verify cancel function exists and can be called
 		if sched.cancel == nil {
