@@ -642,6 +642,10 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	}
 
 	// Two-way sync: sync destination events back to source
+	// NOTE: We do NOT add destination events to currentUIDs here because:
+	// 1. Events from OTHER source calendars should not be tracked by THIS calendar
+	// 2. Only events that exist on THIS source calendar should be in synced_events
+	// 3. This prevents the bug where calendar A deletes events synced by calendar B
 	if source.SyncDirection == db.SyncDirectionTwoWay {
 		log.Printf("Two-way sync enabled, syncing destination events to source")
 		skippedAlreadyExists := 0
@@ -654,31 +658,19 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 			sourceEvent, exists := sourceEventMap[destEvent.UID]
 
 			if !exists {
-				// Check if this was previously synced (meaning it was deleted from source)
+				// Check if this was previously synced BY THIS CALENDAR (meaning it was deleted from source)
 				if _, wasSynced := previouslySyncedMap[destEvent.UID]; wasSynced {
 					// Already handled in deletion phase above
 					continue
 				}
 
-				// New event on destination - create on source
-				if err := sourceClient.PutEvent(ctx, calendar.Path, &destEvent); err != nil {
-					// Handle expected CalDAV errors gracefully
-					if isAlreadyExistsError(err) {
-						// 412 Precondition Failed - event already exists on source, treat as success
-						skippedAlreadyExists++
-						currentUIDs[destEvent.UID] = true
-					} else if isForbiddenError(err) {
-						// 403 Forbidden - calendar doesn't allow writes, skip silently
-						skippedForbidden++
-					} else {
-						result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to create event on source: %v", err))
-					}
-				} else {
-					result.Created++
-					currentUIDs[destEvent.UID] = true
-				}
-				updateProgress()
+				// Event exists on destination but not on this source calendar
+				// This could be an event from ANOTHER source calendar - don't sync it back
+				// Only sync back events that we can verify belong to this source
+				// Skip creating on source to avoid cross-calendar pollution
+				continue
 			} else if destEvent.ETag != sourceEvent.ETag {
+				// Event exists on both - this is a legitimate update scenario
 				if source.ConflictStrategy == db.ConflictDestWins {
 					destEvent.Path = sourceEvent.Path
 					if err := sourceClient.PutEvent(ctx, calendar.Path, &destEvent); err != nil {
@@ -693,11 +685,10 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 						result.Updated++
 					}
 				}
-				currentUIDs[destEvent.UID] = true
+				// Don't add to currentUIDs - already tracked from source→dest sync
 				updateProgress()
-			} else {
-				currentUIDs[destEvent.UID] = true
 			}
+			// If ETags match, event is unchanged - nothing to do
 		}
 		if skippedAlreadyExists > 0 {
 			log.Printf("Two-way sync: %d events already exist on source (skipped)", skippedAlreadyExists)
