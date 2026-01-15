@@ -88,7 +88,11 @@ const ActiveSyncCard = ({ activity }: { activity: SyncActivity }) => (
 
     <ProgressBar current={activity.calendars_synced} total={activity.total_calendars} />
 
-    <div className="mt-4 grid grid-cols-4 gap-2 text-center">
+    <div className="mt-4 grid grid-cols-5 gap-2 text-center">
+      <div>
+        <p className="text-lg font-semibold text-cyan-400">{activity.events_processed}</p>
+        <p className="text-xs text-gray-500">Processed</p>
+      </div>
       <div>
         <p className="text-lg font-semibold text-blue-400">{activity.events_created}</p>
         <p className="text-xs text-gray-500">Created</p>
@@ -143,10 +147,14 @@ const RecentSyncCard = ({ activity }: { activity: SyncActivity }) => (
       </div>
     )}
 
-    <div className="grid grid-cols-5 gap-2 text-center">
+    <div className="grid grid-cols-6 gap-2 text-center">
       <div>
         <p className="text-sm font-semibold text-white">{activity.calendars_synced}/{activity.total_calendars}</p>
         <p className="text-xs text-gray-500">Calendars</p>
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-cyan-400">{activity.events_processed}</p>
+        <p className="text-xs text-gray-500">Processed</p>
       </div>
       <div>
         <p className="text-sm font-semibold text-blue-400">{activity.events_created}</p>

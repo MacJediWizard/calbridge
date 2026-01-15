@@ -437,6 +437,18 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		destEvents = []Event{}
 	}
 	log.Printf("Fetched %d events from destination calendar", len(destEvents))
+
+	// Filter destination events by date if sync_days_past is configured
+	if source.SyncDaysPast > 0 {
+		cutoffDate := time.Now().AddDate(0, 0, -source.SyncDaysPast)
+		originalCount := len(destEvents)
+		destEvents = filterEventsByDate(destEvents, cutoffDate)
+		filteredOut := originalCount - len(destEvents)
+		if filteredOut > 0 {
+			log.Printf("Filtered out %d destination events older than %d days", filteredOut, source.SyncDaysPast)
+		}
+	}
+
 	updateStatus(fmt.Sprintf("comparing %d vs %d events", len(sourceEvents), len(destEvents)))
 
 	// Get previously synced events for deletion detection
