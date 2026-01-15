@@ -14,9 +14,10 @@ import (
 const (
 	cleanupInterval     = 24 * time.Hour
 	logRetentionDays    = 30
-	syncTimeout         = 30 * time.Minute // Maximum time for a single sync operation
+	syncTimeout         = 60 * time.Minute // Maximum time for a single sync operation (increased for slow iCloud)
 	healthLogInterval   = 5 * time.Minute  // Interval for scheduler health logging
 	staleMultiplier     = 2                // Source is stale if last sync > staleMultiplier * interval
+	startupStagger      = 30 * time.Second // Delay between starting each source's first sync
 )
 
 // Job represents a scheduled sync job.
@@ -67,16 +68,24 @@ func (s *Scheduler) Start() error {
 	s.started = true
 	s.mu.Unlock()
 
+	// Reset any "running" statuses from previous interrupted runs
+	if count, err := s.db.ResetRunningSyncStatuses(); err != nil {
+		log.Printf("Warning: failed to reset running sync statuses: %v", err)
+	} else if count > 0 {
+		log.Printf("Reset %d interrupted sync(s) from previous run", count)
+	}
+
 	// Load all enabled sources
 	sources, err := s.db.GetEnabledSources()
 	if err != nil {
 		return err
 	}
 
-	// Start a job for each enabled source
-	for _, source := range sources {
+	// Start jobs with staggered initial sync to avoid resource contention
+	for i, source := range sources {
 		interval := time.Duration(source.SyncInterval) * time.Second
-		s.AddJob(source.ID, interval)
+		stagger := time.Duration(i) * startupStagger
+		s.AddJobWithDelay(source.ID, interval, stagger)
 	}
 
 	// Start cleanup goroutine
@@ -152,6 +161,36 @@ func (s *Scheduler) AddJob(sourceID string, interval time.Duration) {
 	log.Printf("Added sync job for source %s with interval %v", sourceID, interval)
 }
 
+// AddJobWithDelay adds a sync job with a delayed initial sync.
+// This is used to stagger sync starts and avoid resource contention.
+func (s *Scheduler) AddJobWithDelay(sourceID string, interval time.Duration, initialDelay time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Remove existing job if any
+	if existingJob, exists := s.jobs[sourceID]; exists {
+		close(existingJob.stopCh)
+		existingJob.ticker.Stop()
+	}
+
+	// Create new job with delayed start
+	job := &Job{
+		sourceID:   sourceID,
+		interval:   interval,
+		ticker:     time.NewTicker(interval),
+		stopCh:     make(chan struct{}),
+		nextSyncAt: time.Now().Add(initialDelay),
+	}
+
+	s.jobs[sourceID] = job
+
+	// Start job goroutine with initial delay
+	s.wg.Add(1)
+	go s.runJobWithDelay(job, initialDelay)
+
+	log.Printf("Added sync job for source %s with interval %v (starting in %v)", sourceID, interval, initialDelay)
+}
+
 // RemoveJob removes a sync job and cleans up associated resources.
 func (s *Scheduler) RemoveJob(sourceID string) {
 	s.mu.Lock()
@@ -211,6 +250,40 @@ func (s *Scheduler) runJob(job *Job) {
 	s.executeSync(job.sourceID)
 	s.updateNextSyncAt(job.sourceID)
 
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-job.stopCh:
+			return
+		case <-job.ticker.C:
+			s.executeSync(job.sourceID)
+			s.updateNextSyncAt(job.sourceID)
+		}
+	}
+}
+
+// runJobWithDelay runs the sync job loop with an initial delay.
+func (s *Scheduler) runJobWithDelay(job *Job, initialDelay time.Duration) {
+	defer s.wg.Done()
+
+	// Wait for initial delay before first sync
+	if initialDelay > 0 {
+		select {
+		case <-s.ctx.Done():
+			return
+		case <-job.stopCh:
+			return
+		case <-time.After(initialDelay):
+			// Continue to first sync
+		}
+	}
+
+	// Run first sync
+	s.executeSync(job.sourceID)
+	s.updateNextSyncAt(job.sourceID)
+
+	// Continue with regular interval
 	for {
 		select {
 		case <-s.ctx.Done():

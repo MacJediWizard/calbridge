@@ -266,6 +266,25 @@ func (db *DB) UpdateSourceSyncStatus(id string, status SyncStatus, message strin
 	return nil
 }
 
+// ResetRunningSyncStatuses resets any sources with "running" status to "pending".
+// This should be called on startup to clean up statuses from interrupted syncs.
+func (db *DB) ResetRunningSyncStatuses() (int64, error) {
+	now := time.Now().UTC()
+	query := `UPDATE sources SET last_sync_status = ?, last_sync_message = ?, updated_at = ? WHERE last_sync_status = ?`
+
+	result, err := db.conn.Exec(query, SyncStatusPending, "Reset on startup", now, SyncStatusRunning)
+	if err != nil {
+		return 0, fmt.Errorf("failed to reset running sync statuses: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return affected, nil
+}
+
 // DeleteSource deletes a source by its ID.
 func (db *DB) DeleteSource(id string) error {
 	query := `DELETE FROM sources WHERE id = ?`
