@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { getDashboardStats, getSources, triggerSync, getSyncHistory, getMalformedEvents, deleteMalformedEvent, deleteAllMalformedEvents } from '../services/api';
 import type { DashboardStats, Source, SyncHistory, MalformedEvent } from '../types';
@@ -15,6 +15,14 @@ import {
   Legend,
 } from 'recharts';
 
+// Spinner component for sync indicators
+const Spinner = ({ className = '' }: { className?: string }) => (
+  <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+  </svg>
+);
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
@@ -26,11 +34,12 @@ export default function Dashboard() {
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Check if any source is currently syncing
+  const syncingSources = sources.filter(s => s.sync_status === 'running');
+  const isAnySyncing = syncingSources.length > 0 || syncingId !== null;
 
-  const loadData = async () => {
+  const loadData = useCallback(async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     try {
       const [statsData, sourcesData, historyData, malformedData] = await Promise.all([
         getDashboardStats(),
@@ -48,19 +57,44 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData(true);
+  }, [loadData]);
+
+  // Auto-refresh when syncing is active
+  useEffect(() => {
+    if (!isAnySyncing) return;
+
+    const interval = setInterval(() => {
+      loadData(false);
+    }, 3000); // Refresh every 3 seconds while syncing
+
+    return () => clearInterval(interval);
+  }, [isAnySyncing, loadData]);
 
   const handleSync = async (id: string) => {
     setSyncingId(id);
     try {
       await triggerSync(id);
-      await loadData();
+      // Don't clear syncingId immediately - let auto-refresh detect when done
+      await loadData(false);
     } catch (err) {
       console.error('Sync failed:', err);
-    } finally {
       setSyncingId(null);
     }
   };
+
+  // Clear syncingId when the source is no longer running
+  useEffect(() => {
+    if (syncingId) {
+      const source = sources.find(s => s.id === syncingId);
+      if (source && source.sync_status !== 'running') {
+        setSyncingId(null);
+      }
+    }
+  }, [sources, syncingId]);
 
   const handleDeleteMalformedEvent = async (id: string) => {
     if (!confirm('Delete this corrupted event from the source calendar?')) return;
@@ -108,6 +142,24 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Sync In Progress Banner */}
+      {isAnySyncing && (
+        <div className="bg-blue-900/30 border border-blue-500/50 rounded-lg px-4 py-3 flex items-center space-x-3 animate-pulse">
+          <Spinner className="h-5 w-5 text-blue-400" />
+          <div className="flex-1">
+            <p className="text-blue-400 font-medium">
+              Sync in progress
+              {syncingSources.length > 0 && (
+                <span className="text-blue-300 font-normal ml-2">
+                  - {syncingSources.map(s => s.name).join(', ')}
+                </span>
+              )}
+            </p>
+            <p className="text-blue-400/70 text-xs mt-0.5">Auto-refreshing every 3 seconds...</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -302,8 +354,14 @@ export default function Dashboard() {
 
       {/* Sources Table */}
       <div className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-800">
+        <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-white">Calendar Sources</h2>
+          {isAnySyncing && (
+            <div className="flex items-center space-x-2 text-blue-400 text-xs">
+              <Spinner className="h-3 w-3" />
+              <span>Syncing...</span>
+            </div>
+          )}
         </div>
         {sources.length > 0 ? (
           <div className="overflow-x-auto">
@@ -319,83 +377,105 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {sources.map((source) => (
-                  <tr key={source.id} className="hover:bg-zinc-800/50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-white">{source.name}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-xs">{source.source_url}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400">{source.source_type}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-2">
-                        {source.enabled ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              source.sync_status === 'success'
-                                ? 'bg-green-900/50 text-green-400'
+                {sources.map((source) => {
+                  const isSourceSyncing = source.sync_status === 'running' || syncingId === source.id;
+                  return (
+                    <tr key={source.id} className={`hover:bg-zinc-800/50 ${isSourceSyncing ? 'bg-blue-900/10' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center space-x-2">
+                          {isSourceSyncing && <Spinner className="h-4 w-4 text-blue-400" />}
+                          <div>
+                            <div className="font-medium text-white">{source.name}</div>
+                            <div className="text-xs text-gray-500 truncate max-w-xs">{source.source_url}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400">{source.source_type}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center space-x-2">
+                          {source.enabled ? (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                source.sync_status === 'success'
+                                  ? 'bg-green-900/50 text-green-400'
+                                  : source.sync_status === 'partial'
+                                  ? 'bg-yellow-900/50 text-yellow-400'
+                                  : source.sync_status === 'error'
+                                  ? 'bg-red-900/50 text-red-400'
+                                  : source.sync_status === 'running'
+                                  ? 'bg-blue-900/50 text-blue-400 animate-pulse'
+                                  : 'bg-zinc-800 text-gray-400'
+                              }`}
+                            >
+                              {source.sync_status === 'running' && (
+                                <Spinner className="h-3 w-3 mr-1" />
+                              )}
+                              {source.sync_status === 'success'
+                                ? 'Synced'
                                 : source.sync_status === 'partial'
-                                ? 'bg-yellow-900/50 text-yellow-400'
+                                ? 'Partial'
                                 : source.sync_status === 'error'
-                                ? 'bg-red-900/50 text-red-400'
+                                ? 'Error'
                                 : source.sync_status === 'running'
-                                ? 'bg-blue-900/50 text-blue-400'
-                                : 'bg-zinc-800 text-gray-400'
+                                ? 'Syncing'
+                                : 'Pending'}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-gray-500">
+                              Disabled
+                            </span>
+                          )}
+                          {source.is_stale && source.enabled && (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-900/50 text-orange-400"
+                              title="Source hasn't synced within expected interval"
+                            >
+                              Stale
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-400">{formatDate(source.last_sync_at)}</td>
+                      <td className="px-4 py-3 text-gray-400">
+                        {source.enabled ? formatDate(source.next_sync_at) : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleSync(source.id)}
+                            disabled={!source.enabled || isSourceSyncing}
+                            className={`inline-flex items-center text-xs font-medium disabled:opacity-50 ${
+                              isSourceSyncing
+                                ? 'text-blue-400'
+                                : 'text-red-400 hover:text-red-300'
                             }`}
                           >
-                            {source.sync_status === 'success'
-                              ? 'Synced'
-                              : source.sync_status === 'partial'
-                              ? 'Partial'
-                              : source.sync_status === 'error'
-                              ? 'Error'
-                              : source.sync_status === 'running'
-                              ? 'Running'
-                              : 'Pending'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-zinc-800 text-gray-500">
-                            Disabled
-                          </span>
-                        )}
-                        {source.is_stale && source.enabled && (
-                          <span
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-900/50 text-orange-400"
-                            title="Source hasn't synced within expected interval"
+                            {isSourceSyncing ? (
+                              <>
+                                <Spinner className="h-3 w-3 mr-1" />
+                                Syncing
+                              </>
+                            ) : (
+                              'Sync'
+                            )}
+                          </button>
+                          <Link
+                            to={`/sources/${source.id}/edit`}
+                            className="text-gray-400 hover:text-white text-xs font-medium"
                           >
-                            Stale
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-400">{formatDate(source.last_sync_at)}</td>
-                    <td className="px-4 py-3 text-gray-400">
-                      {source.enabled ? formatDate(source.next_sync_at) : '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => handleSync(source.id)}
-                          disabled={!source.enabled || syncingId === source.id}
-                          className="text-red-400 hover:text-red-300 text-xs font-medium disabled:opacity-50"
-                        >
-                          {syncingId === source.id ? '...' : 'Sync'}
-                        </button>
-                        <Link
-                          to={`/sources/${source.id}/edit`}
-                          className="text-gray-400 hover:text-white text-xs font-medium"
-                        >
-                          Edit
-                        </Link>
-                        <Link
-                          to={`/sources/${source.id}/logs`}
-                          className="text-gray-400 hover:text-white text-xs font-medium"
-                        >
-                          Logs
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                            Edit
+                          </Link>
+                          <Link
+                            to={`/sources/${source.id}/logs`}
+                            className="text-gray-400 hover:text-white text-xs font-medium"
+                          >
+                            Logs
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
