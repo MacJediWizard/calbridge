@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { getSource, updateSource, deleteSource, discoverCalendars } from '../services/api';
-import type { Source, Calendar } from '../types';
+import type { Source, Calendar, CalendarConfig } from '../types';
 
 export default function SourceEdit() {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +26,7 @@ export default function SourceEdit() {
     sync_days_past: 30,
     sync_direction: 'one_way' as 'one_way' | 'two_way',
     conflict_strategy: 'source_wins',
-    selected_calendars: [] as string[],
+    selected_calendars: [] as CalendarConfig[],
   });
 
   useEffect(() => {
@@ -86,9 +86,9 @@ export default function SourceEdit() {
       }
       const discovered = await discoverCalendars(form.source_url, form.source_username, form.source_password);
       setCalendars(discovered);
-      // If no calendars selected yet, select all by default
+      // If no calendars selected yet, select all by default with source default sync direction
       if (form.selected_calendars.length === 0) {
-        setForm(prev => ({ ...prev, selected_calendars: discovered.map(c => c.path) }));
+        setForm(prev => ({ ...prev, selected_calendars: discovered.map(c => ({ path: c.path, sync_direction: '' })) }));
       }
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -104,14 +104,30 @@ export default function SourceEdit() {
 
   const handleCalendarToggle = (path: string) => {
     setForm(prev => {
-      const isSelected = prev.selected_calendars.includes(path);
+      const isSelected = prev.selected_calendars.some(c => c.path === path);
       return {
         ...prev,
         selected_calendars: isSelected
-          ? prev.selected_calendars.filter(p => p !== path)
-          : [...prev.selected_calendars, path]
+          ? prev.selected_calendars.filter(c => c.path !== path)
+          : [...prev.selected_calendars, { path, sync_direction: '' }]
       };
     });
+  };
+
+  const handleCalendarSyncDirection = (path: string, direction: '' | 'one_way' | 'two_way') => {
+    setForm(prev => ({
+      ...prev,
+      selected_calendars: prev.selected_calendars.map(c =>
+        c.path === path ? { ...c, sync_direction: direction } : c
+      )
+    }));
+  };
+
+  const isCalendarSelected = (path: string) => form.selected_calendars.some(c => c.path === path);
+
+  const getCalendarSyncDirection = (path: string) => {
+    const cal = form.selected_calendars.find(c => c.path === path);
+    return cal?.sync_direction || '';
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -318,24 +334,37 @@ export default function SourceEdit() {
               )}
               {calendars.length > 0 && (
                 <div className="p-3 bg-black/50 rounded border border-zinc-700">
-                  <p className="text-xs text-gray-400 mb-2">Select calendars to sync:</p>
+                  <p className="text-xs text-gray-400 mb-2">Select calendars to sync (each can have its own sync direction):</p>
                   <div className="space-y-2">
                     {calendars.map((cal) => (
-                      <label key={cal.path} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={form.selected_calendars.includes(cal.path)}
-                          onChange={() => handleCalendarToggle(cal.path)}
-                          className="rounded border-zinc-600 bg-zinc-800 text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm text-white">{cal.name || cal.path}</span>
-                        {cal.color && (
-                          <span
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: cal.color }}
+                      <div key={cal.path} className="flex items-center justify-between">
+                        <label className="flex items-center space-x-2 cursor-pointer flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isCalendarSelected(cal.path)}
+                            onChange={() => handleCalendarToggle(cal.path)}
+                            className="rounded border-zinc-600 bg-zinc-800 text-red-600 focus:ring-red-500"
                           />
+                          <span className="text-sm text-white">{cal.name || cal.path}</span>
+                          {cal.color && (
+                            <span
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: cal.color }}
+                            />
+                          )}
+                        </label>
+                        {isCalendarSelected(cal.path) && (
+                          <select
+                            value={getCalendarSyncDirection(cal.path)}
+                            onChange={(e) => handleCalendarSyncDirection(cal.path, e.target.value as '' | 'one_way' | 'two_way')}
+                            className="ml-2 text-xs bg-zinc-800 border-zinc-600 rounded px-2 py-1"
+                          >
+                            <option value="">Source default</option>
+                            <option value="one_way">One-way</option>
+                            <option value="two_way">Two-way</option>
+                          </select>
                         )}
-                      </label>
+                      </div>
                     ))}
                   </div>
                   <p className="text-xs text-gray-500 mt-2">

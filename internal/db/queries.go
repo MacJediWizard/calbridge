@@ -434,6 +434,38 @@ func (db *DB) CleanOldSyncLogs(olderThan time.Time) (int64, error) {
 	return affected, nil
 }
 
+// parseSelectedCalendars parses selected_calendars JSON with backward compatibility.
+// Old format: ["path1", "path2"] (array of strings)
+// New format: [{"path": "path1", "sync_direction": "one_way"}] (array of CalendarConfig)
+func parseSelectedCalendars(jsonStr string) []CalendarConfig {
+	if jsonStr == "" {
+		return nil
+	}
+
+	// First try parsing as new format (array of CalendarConfig)
+	var configs []CalendarConfig
+	if err := json.Unmarshal([]byte(jsonStr), &configs); err == nil {
+		// Check if it's actually the new format (has Path field)
+		if len(configs) > 0 && configs[0].Path != "" {
+			return configs
+		}
+	}
+
+	// Try parsing as old format (array of strings)
+	var paths []string
+	if err := json.Unmarshal([]byte(jsonStr), &paths); err == nil {
+		// Convert to new format with empty sync_direction (use source default)
+		configs = make([]CalendarConfig, len(paths))
+		for i, path := range paths {
+			configs[i] = CalendarConfig{Path: path}
+		}
+		return configs
+	}
+
+	// If both fail, return nil
+	return nil
+}
+
 // scanSource scans a single row into a Source struct.
 func scanSource(row *sql.Row) (*Source, error) {
 	source := &Source{}
@@ -467,12 +499,9 @@ func scanSource(row *sql.Row) (*Source, error) {
 		source.SyncDirection = SyncDirectionOneWay
 	}
 
-	// Decode selected_calendars from JSON
-	if selectedCalendarsJSON.Valid && selectedCalendarsJSON.String != "" {
-		if err := json.Unmarshal([]byte(selectedCalendarsJSON.String), &source.SelectedCalendars); err != nil {
-			// Log but don't fail - treat as empty selection
-			source.SelectedCalendars = nil
-		}
+	// Decode selected_calendars from JSON (backward compatible)
+	if selectedCalendarsJSON.Valid {
+		source.SelectedCalendars = parseSelectedCalendars(selectedCalendarsJSON.String)
 	}
 
 	return source, nil
@@ -508,12 +537,9 @@ func scanSourceFromRows(rows *sql.Rows) (*Source, error) {
 		source.SyncDirection = SyncDirectionOneWay
 	}
 
-	// Decode selected_calendars from JSON
-	if selectedCalendarsJSON.Valid && selectedCalendarsJSON.String != "" {
-		if err := json.Unmarshal([]byte(selectedCalendarsJSON.String), &source.SelectedCalendars); err != nil {
-			// Log but don't fail - treat as empty selection
-			source.SelectedCalendars = nil
-		}
+	// Decode selected_calendars from JSON (backward compatible)
+	if selectedCalendarsJSON.Valid {
+		source.SelectedCalendars = parseSelectedCalendars(selectedCalendarsJSON.String)
 	}
 
 	return source, nil

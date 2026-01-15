@@ -176,7 +176,7 @@ type Source struct {
 	SyncDaysPast      int              `json:"sync_days_past"` // How many days in the past to sync (0 = unlimited)
 	SyncDirection     SyncDirection    `json:"sync_direction"`
 	ConflictStrategy  ConflictStrategy `json:"conflict_strategy"`
-	SelectedCalendars []string         `json:"selected_calendars"` // Calendar paths to sync (empty = all)
+	SelectedCalendars []CalendarConfig `json:"selected_calendars"` // Calendar configs to sync (empty = all)
 	Enabled           bool             `json:"enabled"`
 	LastSyncAt        *time.Time       `json:"last_sync_at"`
 	LastSyncStatus    SyncStatus       `json:"last_sync_status"`
@@ -210,6 +210,21 @@ type SyncLog struct {
 	EventsProcessed int           `json:"events_processed"`
 	Duration        time.Duration `json:"duration"`
 	CreatedAt       time.Time     `json:"created_at"`
+}
+
+// CalendarConfig holds per-calendar configuration including sync direction.
+// This allows different calendars within a source to have different sync directions.
+type CalendarConfig struct {
+	Path          string        `json:"path"`
+	SyncDirection SyncDirection `json:"sync_direction,omitempty"` // empty = use source default
+}
+
+// GetSyncDirection returns the calendar's sync direction, or the source default if not set.
+func (c CalendarConfig) GetSyncDirection(sourceDefault SyncDirection) SyncDirection {
+	if c.SyncDirection == "" {
+		return sourceDefault
+	}
+	return c.SyncDirection
 }
 
 // SyncedEvent tracks known event UIDs for deletion detection in two-way sync.

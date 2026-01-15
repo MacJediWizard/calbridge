@@ -387,7 +387,7 @@ func TestSourceToAPI(t *testing.T) {
 			SyncInterval:      300,
 			SyncDirection:     db.SyncDirectionTwoWay,
 			ConflictStrategy:  db.ConflictDestWins,
-			SelectedCalendars: []string{"cal1", "cal2"},
+			SelectedCalendars: []db.CalendarConfig{{Path: "cal1"}, {Path: "cal2"}},
 			Enabled:           true,
 			LastSyncStatus:    db.SyncStatusSuccess,
 			LastSyncAt:        &lastSync,

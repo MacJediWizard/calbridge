@@ -31,6 +31,19 @@ func isForbiddenError(err error) bool {
 	return strings.Contains(errStr, "403") || strings.Contains(errStr, "Forbidden")
 }
 
+// getSyncDirectionForCalendar returns the effective sync direction for a calendar.
+// It checks per-calendar settings first, then falls back to the source default.
+func getSyncDirectionForCalendar(source *db.Source, calendarPath string) db.SyncDirection {
+	// Search for per-calendar config
+	for _, calConfig := range source.SelectedCalendars {
+		if calConfig.Path == calendarPath {
+			return calConfig.GetSyncDirection(source.SyncDirection)
+		}
+	}
+	// Calendar not in selected list, use source default
+	return source.SyncDirection
+}
+
 // SyncResult represents the result of a sync operation.
 type SyncResult struct {
 	Success           bool          `json:"success"`
@@ -201,8 +214,8 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 	// Filter calendars based on selected_calendars setting
 	if len(source.SelectedCalendars) > 0 {
 		selectedSet := make(map[string]bool)
-		for _, path := range source.SelectedCalendars {
-			selectedSet[path] = true
+		for _, calConfig := range source.SelectedCalendars {
+			selectedSet[calConfig.Path] = true
 		}
 
 		var filteredCalendars []Calendar
@@ -377,6 +390,10 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 		Warnings: make([]string, 0),
 	}
 
+	// Get the effective sync direction for this calendar (may be per-calendar or source default)
+	syncDirection := getSyncDirectionForCalendar(source, calendar.Path)
+	log.Printf("Calendar %q sync direction: %s (source default: %s)", calendar.Name, syncDirection, source.SyncDirection)
+
 	// Helper to update activity tracker with current progress
 	updateProgress := func() {
 		se.tracker.UpdateProgress(source.ID, result.Created, result.Updated, result.Deleted, result.Skipped, result.EventsProcessed)
@@ -523,12 +540,12 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	// SAFETY: Skip two-way deletion if destination query returned empty but we have synced events
 	// This prevents mass deletion from source when destination query fails
 	skipTwoWayDeletion := false
-	if source.SyncDirection == db.SyncDirectionTwoWay && len(destEventMap) == 0 && len(previouslySyncedMap) > 0 {
+	if syncDirection == db.SyncDirectionTwoWay && len(destEventMap) == 0 && len(previouslySyncedMap) > 0 {
 		log.Printf("WARNING: Destination returned 0 events but we have %d previously synced events - skipping two-way deletions for safety", len(previouslySyncedMap))
 		skipTwoWayDeletion = true
 	}
 
-	if source.SyncDirection == db.SyncDirectionTwoWay && !skipTwoWayDeletion {
+	if syncDirection == db.SyncDirectionTwoWay && !skipTwoWayDeletion {
 		for uid, syncedEvent := range previouslySyncedMap {
 			_, existsOnSource := sourceEventMap[uid]
 			destEvent, existsOnDest := destEventMap[uid]
@@ -646,7 +663,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	// 1. Events from OTHER source calendars should not be tracked by THIS calendar
 	// 2. Only events that exist on THIS source calendar should be in synced_events
 	// 3. This prevents the bug where calendar A deletes events synced by calendar B
-	if source.SyncDirection == db.SyncDirectionTwoWay {
+	if syncDirection == db.SyncDirectionTwoWay {
 		log.Printf("Two-way sync enabled, syncing destination events to source")
 		skippedAlreadyExists := 0
 		skippedForbidden := 0
@@ -699,7 +716,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 	}
 
 	// One-way sync: delete orphan events on destination
-	if source.SyncDirection == db.SyncDirectionOneWay && source.ConflictStrategy == db.ConflictSourceWins {
+	if syncDirection == db.SyncDirectionOneWay && source.ConflictStrategy == db.ConflictSourceWins {
 		for _, event := range destEventMap {
 			if err := destClient.DeleteEvent(ctx, event.Path); err != nil {
 				result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete orphan event: %v", err))

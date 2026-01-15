@@ -314,7 +314,7 @@ func TestCreateSource(t *testing.T) {
 			SyncInterval:      600,
 			SyncDirection:     SyncDirectionTwoWay,
 			ConflictStrategy:  ConflictLatestWins,
-			SelectedCalendars: []string{"/cal1/", "/cal2/"},
+			SelectedCalendars: []CalendarConfig{{Path: "/cal1/"}, {Path: "/cal2/"}},
 			Enabled:           true,
 		}
 
@@ -508,7 +508,7 @@ func TestUpdateSource(t *testing.T) {
 		source.Name = "Updated Name"
 		source.SyncDirection = SyncDirectionTwoWay
 		source.SyncInterval = 900
-		source.SelectedCalendars = []string{"/updated/"}
+		source.SelectedCalendars = []CalendarConfig{{Path: "/updated/"}}
 
 		err := db.UpdateSource(source)
 		if err != nil {
