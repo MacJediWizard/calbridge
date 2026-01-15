@@ -14,10 +14,10 @@ import (
 const (
 	cleanupInterval     = 24 * time.Hour
 	logRetentionDays    = 30
-	syncTimeout         = 60 * time.Minute // Maximum time for a single sync operation (increased for slow iCloud)
-	healthLogInterval   = 5 * time.Minute  // Interval for scheduler health logging
-	staleMultiplier     = 2                // Source is stale if last sync > staleMultiplier * interval
-	startupStagger      = 30 * time.Second // Delay between starting each source's first sync
+	syncTimeout         = 120 * time.Minute // Maximum time for a single sync operation (2 hours for slow iCloud with multiple calendars)
+	healthLogInterval   = 5 * time.Minute   // Interval for scheduler health logging
+	staleMultiplier     = 2                 // Source is stale if last sync > staleMultiplier * interval
+	startupStagger      = 30 * time.Second  // Delay between starting each source's first sync
 )
 
 // Job represents a scheduled sync job.

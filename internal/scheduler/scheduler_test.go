@@ -75,9 +75,9 @@ func TestSchedulerConstants(t *testing.T) {
 		}
 	})
 
-	t.Run("sync timeout is 60 minutes", func(t *testing.T) {
-		if syncTimeout != 60*time.Minute {
-			t.Errorf("expected syncTimeout to be 60m, got %v", syncTimeout)
+	t.Run("sync timeout is 120 minutes", func(t *testing.T) {
+		if syncTimeout != 120*time.Minute {
+			t.Errorf("expected syncTimeout to be 120m, got %v", syncTimeout)
 		}
 	})
 

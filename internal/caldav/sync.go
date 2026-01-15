@@ -206,7 +206,7 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 		// Update activity tracker with current calendar
 		se.tracker.UpdateCalendar(source.ID, cal.Name, i+1)
 
-		calResult := se.syncCalendar(ctx, source, sourceClient, destClient, cal)
+		calResult := se.syncCalendar(ctx, source, sourceClient, destClient, cal, i+1)
 		result.Created += calResult.Created
 		result.Updated += calResult.Updated
 		result.Deleted += calResult.Deleted
@@ -238,7 +238,7 @@ func (se *SyncEngine) SyncSource(ctx context.Context, source *db.Source) *SyncRe
 	return result
 }
 
-func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourceClient, destClient *Client, calendar Calendar) *SyncResult {
+func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourceClient, destClient *Client, calendar Calendar, calendarIndex int) *SyncResult {
 	result := &SyncResult{
 		Errors:   make([]string, 0),
 		Warnings: make([]string, 0),
@@ -305,13 +305,18 @@ func (se *SyncEngine) syncCalendar(ctx context.Context, source *db.Source, sourc
 	}
 
 	// Full sync fallback
-	return se.fullSync(ctx, source, sourceClient, destClient, calendar)
+	return se.fullSync(ctx, source, sourceClient, destClient, calendar, calendarIndex)
 }
 
-func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceClient, destClient *Client, calendar Calendar) *SyncResult {
+func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceClient, destClient *Client, calendar Calendar, calendarIndex int) *SyncResult {
 	result := &SyncResult{
 		Errors:   make([]string, 0),
 		Warnings: make([]string, 0),
+	}
+
+	// Helper to update activity tracker with current progress
+	updateProgress := func() {
+		se.tracker.UpdateProgress(source.ID, result.Created, result.Updated, result.Deleted, result.Skipped, result.EventsProcessed)
 	}
 
 	// Create collector for malformed events from source
@@ -436,6 +441,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 					result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete event from dest: %v", err))
 				} else {
 					result.Deleted++
+					updateProgress()
 				}
 				// Remove from synced_events
 				if err := se.db.DeleteSyncedEvent(source.ID, calendar.Path, uid); err != nil {
@@ -460,6 +466,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 					result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete event from source: %v", err))
 				} else {
 					result.Deleted++
+					updateProgress()
 				}
 				// Remove from synced_events
 				if err := se.db.DeleteSyncedEvent(source.ID, calendar.Path, uid); err != nil {
@@ -492,6 +499,9 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 			log.Printf("Source dedupe key: %q (UID: %s)", dedupeKey, sourceEvent.UID)
 			if dedupeKey != "|" && destDedupeMap[dedupeKey] {
 				skippedDupes++
+				result.Skipped++
+				result.EventsProcessed++
+				updateProgress()
 				log.Printf("Skipping duplicate event: %s at %s (dedupe key match)", sourceEvent.Summary, sourceEvent.StartTime)
 				continue
 			}
@@ -506,6 +516,8 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 				}
 				currentUIDs[sourceEvent.UID] = true
 			}
+			result.EventsProcessed++
+			updateProgress()
 		} else if sourceEvent.ETag != destEvent.ETag {
 			// Update existing event
 			sourceEvent.Path = destEvent.Path
@@ -515,15 +527,16 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 				result.Updated++
 				currentUIDs[sourceEvent.UID] = true
 			}
+			result.EventsProcessed++
+			updateProgress()
 		} else {
 			// Event unchanged, still track it
 			currentUIDs[sourceEvent.UID] = true
+			result.EventsProcessed++
+			updateProgress()
 		}
 		delete(destEventMap, sourceEvent.UID)
 	}
-
-	result.Skipped = skippedDupes
-	result.EventsProcessed = len(sourceEvents)
 
 	if skippedDupes > 0 {
 		log.Printf("Skipped %d duplicate events", skippedDupes)
@@ -553,6 +566,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 					result.Created++
 					currentUIDs[destEvent.UID] = true
 				}
+				updateProgress()
 			} else if destEvent.ETag != sourceEvent.ETag {
 				if source.ConflictStrategy == db.ConflictDestWins {
 					destEvent.Path = sourceEvent.Path
@@ -563,6 +577,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 					}
 				}
 				currentUIDs[destEvent.UID] = true
+				updateProgress()
 			} else {
 				currentUIDs[destEvent.UID] = true
 			}
@@ -576,6 +591,7 @@ func (se *SyncEngine) fullSync(ctx context.Context, source *db.Source, sourceCli
 				result.Warnings = append(result.Warnings, fmt.Sprintf("Failed to delete orphan event: %v", err))
 			} else {
 				result.Deleted++
+				updateProgress()
 			}
 		}
 	}
