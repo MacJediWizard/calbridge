@@ -937,9 +937,9 @@ func TestXmlEscape(t *testing.T) {
 }
 
 func TestConstants(t *testing.T) {
-	t.Run("defaultTimeout is 30 seconds", func(t *testing.T) {
-		if defaultTimeout != 30*time.Second {
-			t.Errorf("expected defaultTimeout to be 30s, got %v", defaultTimeout)
+	t.Run("defaultTimeout is 5 minutes", func(t *testing.T) {
+		if defaultTimeout != 300*time.Second {
+			t.Errorf("expected defaultTimeout to be 300s, got %v", defaultTimeout)
 		}
 	})
 

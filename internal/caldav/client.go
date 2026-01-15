@@ -28,7 +28,7 @@ var (
 )
 
 const (
-	defaultTimeout = 30 * time.Second
+	defaultTimeout = 300 * time.Second // 5 minutes default for slow CalDAV servers like iCloud
 	minTLSVersion  = tls.VersionTLS12
 )
 

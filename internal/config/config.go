@@ -91,7 +91,8 @@ type DatabaseConfig struct {
 
 // CalDAVConfig holds CalDAV-related configuration.
 type CalDAVConfig struct {
-	DefaultDestURL string
+	DefaultDestURL     string
+	RequestTimeoutSecs int // HTTP request timeout in seconds (default: 300 = 5 minutes)
 }
 
 // RateLimitConfig holds rate limiting configuration.
@@ -166,6 +167,11 @@ func Load() (*Config, error) {
 
 	// CalDAV configuration
 	cfg.CalDAV.DefaultDestURL = getEnvRequired("DEFAULT_DEST_URL")
+	caldavTimeout, err := getEnvInt("CALDAV_REQUEST_TIMEOUT", 300)
+	if err != nil {
+		return nil, fmt.Errorf("%w: CALDAV_REQUEST_TIMEOUT: %w", ErrInvalidConfig, err)
+	}
+	cfg.CalDAV.RequestTimeoutSecs = caldavTimeout
 
 	// Rate limiting configuration
 	rps, err := getEnvFloat("RATE_LIMIT_RPS", 10.0)
